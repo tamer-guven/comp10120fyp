@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Restaurant Menu - The Bee Hotel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        :root { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- Header & Navigation -->
+    <header class="bg-white shadow-lg sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <h1 class="text-3xl font-extrabold text-gray-900 tracking-wider">The <span class="text-amber-500">Bee</span> Hotel</h1>
+            <nav class="space-x-4 flex items-center">
+                <!-- Button to return to Dashboard -->
+                <button class="px-5 py-2 bg-gray-800 text-white rounded-lg shadow-md hover:bg-amber-500 hover:text-gray-900 transition duration-150 font-medium" onclick="goToPage('clientdashboard.html')">
+                    Go to Dashboard
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Area: Weekly Menu -->
+    <main class="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
+        <h2 class="text-4xl font-bold text-gray-900 mb-2">The Hive Restaurant Menu</h2>
+        <p class="text-gray-600 text-lg mb-10">Explore our seasonal menu offerings for the current week. <span class="font-semibold text-amber-600">Today's menu is highlighted below.</span></p>
+
+        <!-- Menu Container (Grid Layout) -->
+        <!-- Added unique IDs for easy targeting by JS -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+
+            <!-- Day Card Template - Each card now has a data-day attribute for easy JS targeting -->
+            <div id="menu-monday" data-day="Monday" class="day-card bg-white p-6 rounded-2xl shadow-xl border-t-4 border-amber-400 transform hover:scale-[1.01] transition duration-300">
+                <h3 class="text-2xl font-bold text-gray-900 mb-4 border-b pb-2">Monday</h3>
+                <div class="space-y-4">
+                    <p class="text-lg"><strong>Breakfast:</strong> Artisan Waffles & Berries</p>
+                    <p class="text-lg"><strong>Lunch:</strong> Caprese Sandwich w/ Balsamic Glaze</p>
+                    <p class="text-lg"><strong>Dinner:</strong> Grilled Salmon with Lemon-Dill Sauce</p>
+                </div>
+            </div>
+
+            <div id="menu-tuesday" data-day="Tuesday" class="day-card bg-white p-6 rounded-2xl shadow-xl border-t-4 border-amber-400 transform hover:scale-[1.01] transition duration-300">
+                <h3 class="text-2xl font-bold text-gray-900 mb-4 border-b pb-2">Tuesday</h3>
+                <div class="space-y-4">
+                    <p class="text-lg"><strong>Breakfast:</strong> Smoked Salmon Bagel</p>
+                    <p class="text-lg"><strong>Lunch:</strong> Creamy Tomato Soup & Grilled Cheese</p>
+                    <p class="text-lg"><strong>Dinner:</strong> Chicken Tikka Masala with Basmati</p>
+                </div>
+            </div>
+
+            <div id="menu-wednesday" data-day="Wednesday" class="day-card bg-white p-6 rounded-2xl shadow-xl border-t-4 border-amber-400 transform hover:scale-[1.01] transition duration-300">
+                <h3 class="text-2xl font-bold text-gray-900 mb-4 border-b pb-2">Wednesday</h3>
+                <div class="space-y-4">
+                    <p class="text-lg"><strong>Breakfast:</strong> Huevos Rancheros</p>
+                    <p class="text-lg"><strong>Lunch:</strong> Classic Cobb Salad</p>
+                    <p class="text-lg"><strong>Dinner:</strong> Traditional Lasagna</p>
+                </div>
+            </div>
+
+            <div id="menu-thursday" data-day="Thursday" class="day-card bg-white p-6 rounded-2xl shadow-xl border-t-4 border-amber-400 transform hover:scale-[1.01] transition duration-300">
+                <h3 class="text-2xl font-bold text-gray-900 mb-4 border-b pb-2">Thursday</h3>
+                <div class="space-y-4">
+                    <p class="text-lg"><strong>Breakfast:</strong> Fresh Fruit & Yogurt Parfait</p>
+                    <p class="text-lg"><strong>Lunch:</strong> Spicy Shrimp Tacos</p>
+                    <p class="text-lg"><strong>Dinner:</strong> Beef Tenderloin with Asparagus</p>
+                </div>
+            </div>
+
+            <div id="menu-friday" data-day="Friday" class="day-card bg-white p-6 rounded-2xl shadow-xl border-t-4 border-amber-400 transform hover:scale-[1.01] transition duration-300">
+                <h3 class="text-2xl font-bold text-gray-900 mb-4 border-b pb-2">Friday (Seafood Night)</h3>
+                <div class="space-y-4">
+                    <p class="text-lg"><strong>Breakfast:</strong> Belgian Chocolate Crepes</p>
+                    <p class="text-lg"><strong>Lunch:</strong> Quinoa Bowl with Roasted Vegetables</p>
+                    <p class="text-lg"><strong>Dinner:</strong> Pan-Seared Scallops with Risotto</p>
+                </div>
+            </div>
+
+            <div id="menu-saturday" data-day="Saturday" class="day-card bg-white p-6 rounded-2xl shadow-xl border-t-4 border-amber-400 transform hover:scale-[1.01] transition duration-300">
+                <h3 class="text-2xl font-bold text-gray-900 mb-4 border-b pb-2">Saturday (Chef's Special)</h3>
+                <div class="space-y-4">
+                    <p class="text-lg"><strong>Breakfast:</strong> Eggs Benedict</p>
+                    <p class="text-lg"><strong>Lunch:</strong> Classic Cheeseburger & Fries</p>
+                    <p class="text-lg"><strong>Dinner:</strong> Roast Duck Breast with Cherry Reduction</p>
+                </div>
+            </div>
+
+            <div id="menu-sunday" data-day="Sunday" class="day-card bg-white p-6 rounded-2xl shadow-xl border-t-4 border-amber-400 transform hover:scale-[1.01] transition duration-300">
+                <h3 class="text-2xl font-bold text-gray-900 mb-4 border-b pb-2">Sunday (Brunch Day)</h3>
+                <div class="space-y-4">
+                    <p class="text-lg"><strong>Brunch:</strong> All-Day Buffet</p>
+                    <p class="text-lg"><strong>Lunch:</strong> (Included in Brunch)</p>
+                    <p class="text-lg"><strong>Dinner:</strong> Prime Rib Roast</p>
+                </div>
+            </div>
+            
+        </div>
+    </main>
+
+
+    <script>
+        // Central navigation function
+        function goToPage(filename) {
+            window.location.href = filename;
+        }
+
+        /**
+         * Highlights the menu card corresponding to the current day of the week.
+         */
+        function highlightCurrentDay() {
+            // Array to map the day index (0=Sunday, 1=Monday, etc.) to the day name string
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            
+            // Get the current day name
+            const todayIndex = new Date().getDay();
+            const todayName = days[todayIndex];
+
+            // Select all menu cards
+            const menuCards = document.querySelectorAll('.day-card');
+
+            // Define the highlight classes to add
+            const highlightClassesToAdd = [
+                'bg-amber-50', 
+                'shadow-2xl', 
+                'ring-4', 
+                'ring-amber-300', 
+                'border-amber-600', 
+                'scale-[1.03]'
+            ];
+
+            // Define the base classes to remove to intensify the highlight
+            const baseClassesToRemove = [
+                'border-amber-400', 
+                'transform', 
+                'hover:scale-[1.01]' 
+            ];
+
+
+            menuCards.forEach(card => {
+                const cardDay = card.getAttribute('data-day');
+
+                if (cardDay === todayName) {
+                    // Remove base classes
+                    card.classList.remove(...baseClassesToRemove);
+                    
+                    // Add highlight classes
+                    card.classList.add(...highlightClassesToAdd);
+                }
+            });
+        }
+
+        // Run the highlighting function when the page loads
+        window.onload = function() {
+            highlightCurrentDay();
+        };
+
+    </script>
+</body>
+</html>
