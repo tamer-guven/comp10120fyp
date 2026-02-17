@@ -76,7 +76,7 @@ if (!isset($_SESSION['user_id'])) {
                         
                         <!-- Dynamic Link: Activities (First row, second button) -->
                         <button class="py-3 px-4 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition" 
-                                onclick="goToPage('clientactivities.html')">
+                                onclick="goToPage('clientactivities.php')">
                             Book Activities
                         </button>
                         
