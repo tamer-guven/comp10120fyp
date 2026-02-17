@@ -2,7 +2,7 @@
 $servername = "localhost";
 $username = "root";
 $password = "";
-$dbname = "hotel_management_db"; // Matches create_tables.php
+$dbname = "hotel_management_db"; // Defined in create_tables.php
 
 $conn = new mysqli($servername, $username, $password, $dbname);
 
