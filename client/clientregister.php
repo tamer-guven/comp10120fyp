@@ -1,16 +1,16 @@
 <?php
-// Status messages (optional) - expects ?success=1 or ?error=...
+// Optional status messages (expects ?success=1 or ?error=...)
 $message = "";
 $messageClass = "hidden";
 
 if (isset($_GET['success'])) {
-    $message = "Account created successfully! You can now log in.";
+    $message = "Account created successfully! Please log in.";
     $messageClass = "bg-green-100 text-green-700 block";
 } elseif (isset($_GET['error'])) {
     if ($_GET['error'] === "email_taken") $message = "That email is already registered.";
     elseif ($_GET['error'] === "invalid_email") $message = "Please enter a valid email address.";
-    elseif ($_GET['error'] === "weak_password") $message = "Password must be at least 8 characters (include a number if required).";
-    elseif ($_GET['error'] === "password_mismatch") $message = "Passwords do not match.";
+    elseif ($_GET['error'] === "weak_password") $message = "Password must be at least 8 characters.";
+    elseif ($_GET['error'] === "missing_fields") $message = "Please fill in all required fields.";
     else $message = "Something went wrong. Please try again.";
     $messageClass = "bg-red-100 text-red-700 block";
 }
@@ -39,33 +39,57 @@ if (isset($_GET['success'])) {
         </div>
 
         <form action="../includes/register_handler.php" method="POST" class="space-y-6">
-            <div>
-                <label for="client-name" class="block text-sm font-semibold text-gray-700 mb-1">Full Name</label>
-                <input type="text" id="client-name" name="client-name" required
-                       placeholder="Ahmet Dongel"
-                       class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="first_name" class="block text-sm font-semibold text-gray-700 mb-1">First Name</label>
+                    <input type="text" id="first_name" name="first_name" required
+                           placeholder="Ahmet"
+                           class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label for="last_name" class="block text-sm font-semibold text-gray-700 mb-1">Last Name</label>
+                    <input type="text" id="last_name" name="last_name" required
+                           placeholder="Dongel"
+                           class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500">
+                </div>
             </div>
 
             <div>
-                <label for="client-email" class="block text-sm font-semibold text-gray-700 mb-1">Email Address</label>
-                <input type="email" id="client-email" name="client-email" required
+                <label for="user_address" class="block text-sm font-semibold text-gray-700 mb-1">Address</label>
+                <input type="text" id="user_address" name="user_address" required
+                       placeholder="123 Deansgate, Manchester"
+                       class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500">
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="date_of_birth" class="block text-sm font-semibold text-gray-700 mb-1">Date of Birth</label>
+                    <input type="date" id="date_of_birth" name="date_of_birth" required
+                           class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label for="phone_number" class="block text-sm font-semibold text-gray-700 mb-1">Phone Number</label>
+                    <input type="tel" id="phone_number" name="phone_number" required
+                           placeholder="+44 7xxx xxx xxx"
+                           class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500">
+                </div>
+            </div>
+
+            <div>
+                <label for="email" class="block text-sm font-semibold text-gray-700 mb-1">Email Address</label>
+                <input type="email" id="email" name="email" required
                        placeholder="guest@example.com"
                        class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500">
             </div>
 
             <div>
-                <label for="client-password" class="block text-sm font-semibold text-gray-700 mb-1">Password</label>
-                <input type="password" id="client-password" name="client-password" required minlength="8"
+                <label for="password" class="block text-sm font-semibold text-gray-700 mb-1">Password</label>
+                <input type="password" id="password" name="password" required minlength="8"
                        placeholder="••••••••"
                        class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500">
                 <p class="text-xs text-gray-500 mt-2">Use at least 8 characters.</p>
-            </div>
-
-            <div>
-                <label for="client-password-confirm" class="block text-sm font-semibold text-gray-700 mb-1">Confirm Password</label>
-                <input type="password" id="client-password-confirm" name="client-password-confirm" required minlength="8"
-                       placeholder="••••••••"
-                       class="mt-1 block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500">
             </div>
 
             <button type="submit"
@@ -80,21 +104,5 @@ if (isset($_GET['success'])) {
         </p>
     </div>
 
-    <script>
-        // Client-side password match check (still validate on server!)
-        const pw = document.getElementById('client-password');
-        const pw2 = document.getElementById('client-password-confirm');
-
-        function validateMatch() {
-            if (pw2.value && pw.value !== pw2.value) {
-                pw2.setCustomValidity("Passwords do not match.");
-            } else {
-                pw2.setCustomValidity("");
-            }
-        }
-
-        pw.addEventListener('input', validateMatch);
-        pw2.addEventListener('input', validateMatch);
-    </script>
 </body>
 </html>
