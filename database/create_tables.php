@@ -22,6 +22,7 @@ $conn->select_db("hotel_management_db");
 //$conn->query("SET FOREIGN_KEY_CHECKS = 0");
 
 $conn->query("DROP TABLE IF EXISTS services_customers");
+$conn->query("DROP TABLE IF EXISTS housekeeping_requests");
 $conn->query("DROP TABLE IF EXISTS bookings");
 $conn->query("DROP TABLE IF EXISTS rooms");
 $conn->query("DROP TABLE IF EXISTS room_types");
@@ -68,14 +69,16 @@ check_created("rooms", $conn, $sql);
 
 $sql = "CREATE TABLE IF NOT EXISTS bookings(
   booking_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  room_id INT UNSIGNED NOT NULL,
+  room_id INT UNSIGNED NOT NULL DEFAULT 0,
+  room_type_id INT UNSIGNED NOT NULL,
   customer_id INT UNSIGNED NOT NULL,
   check_in_date DATE NOT NULL,
-  booking_status ENUM('pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled', 'no_show') NOT NULL DEFAULT 'pending',
+  booking_status ENUM('booked', 'checked_in', 'checked_out') NOT NULL DEFAULT 'booked',
   check_out_date DATE NOT NULL,
   price DECIMAL(10,2) NOT NULL,
-  CONSTRAINT fk_room
-    FOREIGN KEY (room_id) REFERENCES rooms(room_id)
+  actual_check_in DATETIME DEFAULT NULL,
+  CONSTRAINT fk_booking_room_type
+    FOREIGN KEY (room_type_id) REFERENCES room_types(room_type_id)
     ON DELETE RESTRICT
     ON UPDATE CASCADE,
   CONSTRAINT fk_bookings_customer
@@ -122,6 +125,27 @@ $sql = "CREATE TABLE IF NOT EXISTS services_customers(
 
 check_created("services_customers", $conn, $sql);
 
+$sql = "CREATE TABLE IF NOT EXISTS housekeeping_requests(
+  request_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  customer_id INT UNSIGNED DEFAULT NULL,
+  room_id INT UNSIGNED DEFAULT NULL,
+  room_number VARCHAR(20) DEFAULT NULL,
+  service_type VARCHAR(255) NOT NULL,
+  scheduled_datetime DATETIME NOT NULL,
+  notes TEXT,
+  status ENUM('scheduled','assigned','in_progress','completed','cancelled') NOT NULL DEFAULT 'scheduled',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_hk_customer
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE,
+  CONSTRAINT fk_hk_room
+    FOREIGN KEY (room_id) REFERENCES rooms(room_id)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+
+check_created("housekeeping_requests", $conn, $sql);
 
 $conn->close();
 ?>
