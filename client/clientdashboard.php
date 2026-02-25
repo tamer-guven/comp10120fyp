@@ -153,11 +153,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Fetch the current/latest booking for this customer
 $stmt = $conn->prepare("SELECT b.booking_id, b.check_in_date, b.check_out_date, b.booking_status, b.actual_check_in, b.room_id, r.room_number, rt.type FROM bookings b LEFT JOIN rooms r ON b.room_id = r.room_id JOIN room_types rt ON b.room_type_id = rt.room_type_id WHERE b.customer_id = ? ORDER BY b.check_in_date DESC LIMIT 1");
+    
 $stmt->bind_param("i", $customer_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $current_booking = $result->fetch_assoc();
+if ($current_booking){
+    $_SESSION['current_booking_details'] = array('booking_id'=>$current_booking['booking_id'], 'booking_status'=>$current_booking['booking_status'], 'room_id'=>$current_booking['room_id'], 'room_number'=>$current_booking['room_number'], 'customer_id'=>$customer_id);
+}
+else{
+    $_SESSION['current_booking_details'] = null;
+}
 $stmt->close();
+
+
+echo "<pre>";
+print_r($_SESSION);
+echo "</pre>";
 ?>
 
 <!DOCTYPE html>

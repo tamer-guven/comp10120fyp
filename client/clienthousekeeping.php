@@ -1,3 +1,20 @@
+<?php
+/* Client requests a clean, added to hk request database.
+
+notes:
+- What if a client has multiple rooms
+*/
+
+session_start();
+require_once '../database/db.php';
+
+// Redirect to login if not logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: clientlogin.php");
+    exit();
+}
+
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -52,7 +69,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             <h1 class="text-3xl font-extrabold text-gray-900 tracking-wider">The <span class="text-amber-500">Bee</span> Hotel</h1>
             <nav class="space-x-4 flex items-center">
-                <button class="px-4 py-2 text-gray-700 rounded-lg hover:text-amber-600 transition duration-150 font-medium" onclick="goToPage('clientdashboard.html')">
+                <button class="px-4 py-2 text-gray-700 rounded-lg hover:text-amber-600 transition duration-150 font-medium" onclick="goToPage('clientdashboard.php')">
                     &larr; Back to Dashboard
                 </button>
                 <button id="logoutBtn" class="px-5 py-2 bg-gray-800 text-white rounded-lg shadow-md hover:bg-gray-900 transition duration-150 font-medium" onclick="handleLogout()">
@@ -68,12 +85,12 @@
         <p class="text-gray-600 text-lg mb-8">Schedule your room cleaning or towel refresh at a convenient time.</p>
 
         <div class="bg-white p-6 sm:p-10 rounded-2xl shadow-xl border-t-4 border-amber-500">
-            <form id="housekeepingForm">
+            <form id="housekeepingForm" action="../includes/client_housekeeping_handler.php" method="POST">
 
                 <!-- Room Info (Placeholder) -->
                 <div class="mb-6 pb-4 border-b">
                     <h3 class="text-xl font-bold text-gray-800">Room Details</h3>
-                    <p class="text-gray-600">Requesting service for Room <span class="font-semibold text-amber-600">402</span>.</p>
+                    <p class="text-gray-600">Requesting service for Room <span class="font-semibold text-amber-600"><?= $_SESSION['current_booking_details']['room_number'] ?></span>.</p>
                 </div>
 
                 <!-- 1. Service Type -->
@@ -127,7 +144,7 @@
                 Your request has been successfully scheduled. You will be notified when staff begins service.
             </p>
 
-            <button onclick="goToPage('clientdashboard.html')" class="w-full py-3 bg-amber-500 text-gray-900 font-semibold text-lg rounded-xl shadow-md hover:bg-amber-600 transition duration-200">
+            <button onclick="goToPage('clientdashboard.php')" class="w-full py-3 bg-amber-500 text-gray-900 font-semibold text-lg rounded-xl shadow-md hover:bg-amber-600 transition duration-200">
                 Go Back to Dashboard
             </button>
         </div>
@@ -140,7 +157,7 @@
             window.location.href = filename;
         }
         function handleLogout() {
-            goToPage('clientlogin.html');
+            goToPage('clientlogin.php');
         }
 
         // --- Time Slot Generation Logic ---
@@ -179,6 +196,7 @@
 
         // Function to show the modal with customized text
         function showHousekeepingModal(serviceType, timeSlot) {
+            console.log("this happened");
             const modal = document.getElementById('housekeepingModal');
             const modalText = document.getElementById('modalMessageText');
             
