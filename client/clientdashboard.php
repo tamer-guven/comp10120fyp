@@ -257,10 +257,16 @@ $stmt->close();
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         
                         <!-- Dynamic Link: Housekeeping (First row, first button) -->
-                        <button class="py-3 px-4 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition" 
+                        <?php if ($current_booking && $current_booking['booking_status'] === 'checked_in'):?>
+                            <button class="py-3 px-4 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition" 
                                 onclick="goToPage('clienthousekeeping.php')">
-                            Request Housekeeping
-                        </button>
+                                Request Housekeeping
+                            </button>
+                        <?php else:?>
+                            <button class="py-3 px-4 bg-gray-200 text-gray-300 font-semibold rounded-lg shadow-md">
+                                Request Housekeeping
+                            </button>
+                        <?php endif; ?>
                         
                         <!-- Dynamic Link: Activities -->
                         <button class="py-3 px-4 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition" 
