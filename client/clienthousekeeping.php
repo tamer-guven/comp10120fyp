@@ -85,7 +85,7 @@ if (!isset($_SESSION['user_id'])) {
         <p class="text-gray-600 text-lg mb-8">Schedule your room cleaning or towel refresh at a convenient time.</p>
 
         <div class="bg-white p-6 sm:p-10 rounded-2xl shadow-xl border-t-4 border-amber-500">
-            <form id="housekeepingForm" action="../includes/client_housekeeping_handler.php" method="POST">
+            <form id="housekeepingForm">
 
                 <!-- Room Info (Placeholder) -->
                 <div class="mb-6 pb-4 border-b">
@@ -196,7 +196,6 @@ if (!isset($_SESSION['user_id'])) {
 
         // Function to show the modal with customized text
         function showHousekeepingModal(serviceType, timeSlot) {
-            console.log("this happened");
             const modal = document.getElementById('housekeepingModal');
             const modalText = document.getElementById('modalMessageText');
             
@@ -208,19 +207,31 @@ if (!isset($_SESSION['user_id'])) {
         document.getElementById('housekeepingForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
-            const serviceType = document.querySelector('input[name="serviceType"]:checked').value;
-            const timeSlot = document.getElementById('timeSlot').value;
-            const notes = document.getElementById('notes').value;
+            const formData = new FormData(this);
 
-            // In a real app, this would send an API request to the hotel system
-            console.log('Housekeeping Request Submitted:', { serviceType, timeSlot, notes });
+            fetch('../includes/client_housekeeping_handler.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            //.then(data => {console.log("PHP response:", data);}
             
-            // 1. Show the confirmation modal
-            showHousekeepingModal(serviceType, timeSlot);
+            .then(data => {
+                console.log("PHP response:", data);
 
-            // 2. Optionally reset the form after successful submission
-            this.reset();
-            generateTimeSlots(); // Re-select default time after reset
+                if (data === "Success"){
+                // 1. Show the confirmation modal
+                    showHousekeepingModal(formData.get('serviceType'), formData.get('timeSlot'));
+                }
+                else{
+                    alert("Error: ", data);
+                }
+            })
+
+            .catch(err => {
+                console.error(err);
+                alert("Network error");
+            });
         });
 
         // Initialize time slots when the page loads
