@@ -102,7 +102,7 @@ $current_booking = $stmt->get_result()->fetch_assoc();
                     </div>
                     <h3 class="text-2xl font-bold text-gray-900 mb-4">You have no active bookings</h3>
                     <p class="text-gray-600 mb-8 max-w-md mx-auto">Experience luxury and impeccable service in the heart of Manchester. Ready to plan your escape?</p>
-                    <a href="book_room.php" class="inline-block bg-amber-500 px-10 py-4 rounded-xl font-bold text-gray-900 shadow-xl hover:bg-amber-600 transition transform hover:scale-105">
+                    <a href="clientbook.php" class="inline-block bg-amber-500 px-10 py-4 rounded-xl font-bold text-gray-900 shadow-xl hover:bg-amber-600 transition transform hover:scale-105">
                         Book a Room Now
                     </a>
                 </div>
