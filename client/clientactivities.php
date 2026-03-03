@@ -1,11 +1,17 @@
 <?php
 session_start();
+require_once '../database/db.php';
 
 // Redirect to login if not logged in
 if (!isset($_SESSION['user_id'])) {
     header("Location: clientlogin.php");
     exit();
 }
+
+$conn->select_db("hotel_management_db");
+
+// Fetch all available activities from the database
+$activities = $conn->query("SELECT * FROM services WHERE is_available = 1 ORDER BY service_id ASC");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -44,65 +50,27 @@ if (!isset($_SESSION['user_id'])) {
         <!-- Activities Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
 
-            <!-- Category 1: Wellness -->
-            <div class="bg-white p-6 rounded-2xl shadow-xl border-t-4 border-amber-500 flex flex-col justify-between">
-                <div>
-                    <span class="text-sm font-semibold text-amber-600 uppercase">Wellness & Spa</span>
-                    <h3 class="text-2xl font-bold text-gray-900 mt-1 mb-3">Morning Yoga & Meditation</h3>
-                    <p class="text-gray-600 mb-4">Start your day refreshed. Held in our rooftop garden every morning at 7:00 AM.</p>
+            <?php if ($activities && $activities->num_rows > 0): ?>
+                <?php while ($activity = $activities->fetch_assoc()): ?>
+                    <div class="bg-white p-6 rounded-2xl shadow-xl border-t-4 border-amber-500 flex flex-col justify-between">
+                        <div>
+                            <span class="text-sm font-semibold text-amber-600 uppercase">Activity</span>
+                            <h3 class="text-2xl font-bold text-gray-900 mt-1 mb-3"><?php echo htmlspecialchars($activity['name']); ?></h3>
+                        </div>
+                        <div class="flex justify-between items-center pt-4 border-t">
+                            <span class="text-xl font-extrabold text-gray-800">£<?php echo number_format($activity['cost'], 2); ?></span>
+                            <button class="px-5 py-2 bg-gray-800 text-white font-semibold rounded-lg hover:bg-amber-500 hover:text-gray-900 transition duration-200" onclick="bookService(<?php echo $activity['service_id']; ?>, '<?php echo htmlspecialchars(addslashes($activity['name'])); ?>')">
+                                Book Now
+                            </button>
+                        </div>
+                    </div>
+                <?php endwhile; ?>
+            <?php else: ?>
+                <div class="col-span-full text-center py-12">
+                    <p class="text-gray-500 text-lg">No activities are currently available. Check back soon!</p>
                 </div>
-                <div class="flex justify-between items-center pt-4 border-t">
-                    <span class="text-xl font-extrabold text-gray-800">$20.00 / Session</span>
-                    <button class="px-5 py-2 bg-gray-800 text-white font-semibold rounded-lg hover:bg-amber-500 hover:text-gray-900 transition duration-200" onclick="bookService(1, 'Morning Yoga & Meditation')">
-                        Book Now
-                    </button>
-                </div>
-            </div>
+            <?php endif; ?>
 
-            <!-- Category 2: Dining -->
-            <div class="bg-white p-6 rounded-2xl shadow-xl border-t-4 border-amber-500 flex flex-col justify-between">
-                <div>
-                    <span class="text-sm font-semibold text-amber-600 uppercase">Culinary Experience</span>
-                    <h3 class="text-2xl font-bold text-gray-900 mt-1 mb-3">Regional Cooking Masterclass</h3>
-                    <p class="text-gray-600 mb-4">Learn the secrets of our head chef in a hands-on class. Includes a full meal and wine pairing.</p>
-                </div>
-                <div class="flex justify-between items-center pt-4 border-t">
-                    <span class="text-xl font-extrabold text-gray-800">$75.00 / Person</span>
-                    <button class="px-5 py-2 bg-gray-800 text-white font-semibold rounded-lg hover:bg-amber-500 hover:text-gray-900 transition duration-200" onclick="bookService(2, 'Regional Cooking Masterclass')">
-                        Book Now
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Category 3: Excursions -->
-            <div class="bg-white p-6 rounded-2xl shadow-xl border-t-4 border-amber-500 flex flex-col justify-between">
-                <div>
-                    <span class="text-sm font-semibold text-amber-600 uppercase">Local Tours</span>
-                    <h3 class="text-2xl font-bold text-gray-900 mt-1 mb-3">Historic City Shuttle Tour</h3>
-                    <p class="text-gray-600 mb-4">A guided tour to the city's key historical landmarks, with comfortable, air-conditioned transport.</p>
-                </div>
-                <div class="flex justify-between items-center pt-4 border-t">
-                    <span class="text-xl font-extrabold text-gray-800">$30.00 / Seat</span>
-                    <button class="px-5 py-2 bg-gray-800 text-white font-semibold rounded-lg hover:bg-amber-500 hover:text-gray-900 transition duration-200" onclick="bookService(3, 'Historic City Shuttle Tour')">
-                        Book Now
-                    </button>
-                </div>
-            </div>
-
-            <!-- Additional Activity -->
-            <div class="bg-white p-6 rounded-2xl shadow-xl border-t-4 border-amber-500 flex flex-col justify-between">
-                <div>
-                    <span class="text-sm font-semibold text-amber-600 uppercase">Relaxation</span>
-                    <h3 class="text-2xl font-bold text-gray-900 mt-1 mb-3">Couples Spa Package</h3>
-                    <p class="text-gray-600 mb-4">Enjoy a full day of luxurious treatments, private sauna access, and champagne for two.</p>
-                </div>
-                <div class="flex justify-between items-center pt-4 border-t">
-                    <span class="text-xl font-extrabold text-gray-800">$150.00 / Couple</span>
-                    <button class="px-5 py-2 bg-gray-800 text-white font-semibold rounded-lg hover:bg-amber-500 hover:text-gray-900 transition duration-200" onclick="bookService(4, 'Couples Spa Package')">
-                        Book Now
-                    </button>
-                </div>
-            </div>
         </div>
     </main>
 
