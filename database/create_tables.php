@@ -131,6 +131,7 @@ $sql = "CREATE TABLE IF NOT EXISTS housekeeping_requests(
   room_id INT UNSIGNED NOT NULL,
   service_type VARCHAR(255) NOT NULL,
   scheduled_datetime DATETIME DEFAULT NULL,
+  estimated_duration INT NOT NULL,
   notes TEXT,
   status ENUM('scheduled','assigned','in_progress','completed','cancelled') NOT NULL DEFAULT 'scheduled',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

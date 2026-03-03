@@ -38,18 +38,29 @@ function time_str_to_sql_datetime($time_str): string{
     }
 }
 
+function get_duration($task): int{
+    if ($task === "Full Cleaning")
+        return 45;
+    elseif ($task === "Towel & Amenity Refresh") {
+        return 5;
+    }
+    else
+        return 30;
+}
+
 //echo "<pre>";
 //print_r($_SESSION['']);
 //echo "</pre>";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $serviceType = $_POST['serviceType'] ?? null;
+    $service_type = $_POST['serviceType'] ?? null;
     $time = $_POST['timeSlot'] ?? null;
     $time = time_str_to_sql_datetime($time);
     $hk_notes = $_POST['notes'] ?? null;
+    $estimated_duration = get_duration($service_type);
 
     //verify there is all the right data.
-    if (!$serviceType || !$time){
+    if (!$service_type || !$time){
         echo "missing required fields";
         exit;
     }
@@ -63,11 +74,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     //insert into housekeeping requests table
     $sql = "INSERT INTO housekeeping_requests
-    (room_id, service_type, scheduled_datetime, notes, status)
-    VALUES (?, ?, ?, ?, 'scheduled')";
+    (room_id, service_type, scheduled_datetime, estimated_duration, notes, status)
+    VALUES (?, ?, ?, ?, ?, 'scheduled')";
     
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("isss", $room_id, $serviceType, $time, $hk_notes);
+    $stmt->bind_param("issis", $room_id, $service_type, $time, $estimated_duration, $hk_notes);
 
     if ($stmt->execute()) {
         echo "Success";
