@@ -8,8 +8,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $conn->select_db("hotel_management_db");
 
-    // Select the hashed password and staff info
-    $stmt = $conn->prepare("SELECT staff_id, password_hash, first_name FROM staff WHERE email = ?");
+    // Select the hashed password and staff info including role
+    $stmt = $conn->prepare("SELECT staff_id, password_hash, first_name, role FROM staff WHERE email = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -19,11 +19,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if (password_verify($password, $user['password_hash'])) {
             $_SESSION['staff_id'] = $user['staff_id'];
             $_SESSION['first_name'] = $user['first_name'];
-            
-            // KEY: Store the role from database to determine permissions later
             $_SESSION['role'] = $user['role'];
 
-            header("Location: ../staff/admin_dashboard.php");
+            // Route based on role
+            if ($user['role'] === 'admin') {
+                header("Location: ../staff/admin_dashboard.php");
+            } elseif ($user['role'] === 'cleaner') {
+                header("Location: ../staff/housekeeping_dashboard.php");
+            } else {
+                // Default to admin dashboard for unknown roles
+                header("Location: ../staff/admin_dashboard.php");
+            }
             exit();
         } else {
             header("Location: ../staff/stafflogin.php?error=invalid_password");
