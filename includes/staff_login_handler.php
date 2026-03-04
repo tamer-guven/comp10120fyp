@@ -20,6 +20,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $_SESSION['staff_id'] = $user['staff_id'];
             $_SESSION['first_name'] = $user['first_name'];
             
+            // KEY: Store the role from database to determine permissions later
+            $_SESSION['role'] = $user['role'];
+
             header("Location: ../staff/admin_dashboard.php");
             exit();
         } else {

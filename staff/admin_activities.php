@@ -15,71 +15,76 @@ $error_msg = '';
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['form_action'] ?? '';
+    // SECURITY CHECK: Only managers can perform create/update/delete actions
+    if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'manager') {
+        $error_msg = 'Permission Denied: Only managers can perform this action.';
+    } else {
+        $action = $_POST['form_action'] ?? '';
 
-    // Create new activity
-    if ($action === 'create') {
-        $name = trim($_POST['name'] ?? '');
-        $cost = $_POST['cost'] ?? 0;
-        $is_available = isset($_POST['is_available']) ? 1 : 0;
+        // Create new activity
+        if ($action === 'create') {
+            $name = trim($_POST['name'] ?? '');
+            $cost = $_POST['cost'] ?? 0;
+            $is_available = isset($_POST['is_available']) ? 1 : 0;
 
-        if (empty($name) || $cost < 0) {
-            $error_msg = 'Please provide a valid name and cost.';
-        } else {
-            $stmt = $conn->prepare("INSERT INTO services (name, cost, is_available) VALUES (?, ?, ?)");
-            $stmt->bind_param("sdi", $name, $cost, $is_available);
-            if ($stmt->execute()) {
-                $success_msg = 'Activity "' . htmlspecialchars($name) . '" created successfully!';
+            if (empty($name) || $cost < 0) {
+                $error_msg = 'Please provide a valid name and cost.';
             } else {
-                $error_msg = 'Error creating activity: ' . $conn->error;
-            }
-            $stmt->close();
-        }
-    }
-
-    // Update existing activity
-    elseif ($action === 'update') {
-        $service_id = (int)($_POST['service_id'] ?? 0);
-        $name = trim($_POST['name'] ?? '');
-        $cost = $_POST['cost'] ?? 0;
-        $is_available = isset($_POST['is_available']) ? 1 : 0;
-
-        if (empty($name) || $cost < 0 || !$service_id) {
-            $error_msg = 'Please provide valid details.';
-        } else {
-            $stmt = $conn->prepare("UPDATE services SET name = ?, cost = ?, is_available = ? WHERE service_id = ?");
-            $stmt->bind_param("sdii", $name, $cost, $is_available, $service_id);
-            if ($stmt->execute()) {
-                $success_msg = 'Activity updated successfully!';
-            } else {
-                $error_msg = 'Error updating activity: ' . $conn->error;
-            }
-            $stmt->close();
-        }
-    }
-
-    // Delete activity
-    elseif ($action === 'delete') {
-        $service_id = (int)($_POST['service_id'] ?? 0);
-        if ($service_id) {
-            // Check if activity has any bookings
-            $check = $conn->prepare("SELECT COUNT(*) as count FROM services_customers WHERE service_id = ?");
-            $check->bind_param("i", $service_id);
-            $check->execute();
-            $count = $check->get_result()->fetch_assoc()['count'];
-            $check->close();
-
-            if ($count > 0) {
-                $error_msg = 'Cannot delete this activity — it has been booked by customers. You can mark it as unavailable instead.';
-            } else {
-                $stmt = $conn->prepare("DELETE FROM services WHERE service_id = ?");
-                $stmt->bind_param("i", $service_id);
+                $stmt = $conn->prepare("INSERT INTO services (name, cost, is_available) VALUES (?, ?, ?)");
+                $stmt->bind_param("sdi", $name, $cost, $is_available);
                 if ($stmt->execute()) {
-                    $success_msg = 'Activity deleted successfully!';
+                    $success_msg = 'Activity "' . htmlspecialchars($name) . '" created successfully!';
                 } else {
-                    $error_msg = 'Error deleting activity: ' . $conn->error;
+                    $error_msg = 'Error creating activity: ' . $conn->error;
                 }
                 $stmt->close();
+            }
+        }
+
+        // Update existing activity
+        elseif ($action === 'update') {
+            $service_id = (int)($_POST['service_id'] ?? 0);
+            $name = trim($_POST['name'] ?? '');
+            $cost = $_POST['cost'] ?? 0;
+            $is_available = isset($_POST['is_available']) ? 1 : 0;
+
+            if (empty($name) || $cost < 0 || !$service_id) {
+                $error_msg = 'Please provide valid details.';
+            } else {
+                $stmt = $conn->prepare("UPDATE services SET name = ?, cost = ?, is_available = ? WHERE service_id = ?");
+                $stmt->bind_param("sdii", $name, $cost, $is_available, $service_id);
+                if ($stmt->execute()) {
+                    $success_msg = 'Activity updated successfully!';
+                } else {
+                    $error_msg = 'Error updating activity: ' . $conn->error;
+                }
+                $stmt->close();
+            }
+        }
+
+        // Delete activity
+        elseif ($action === 'delete') {
+            $service_id = (int)($_POST['service_id'] ?? 0);
+            if ($service_id) {
+                // Check if activity has any bookings
+                $check = $conn->prepare("SELECT COUNT(*) as count FROM services_customers WHERE service_id = ?");
+                $check->bind_param("i", $service_id);
+                $check->execute();
+                $count = $check->get_result()->fetch_assoc()['count'];
+                $check->close();
+
+                if ($count > 0) {
+                    $error_msg = 'Cannot delete this activity — it has been booked by customers. You can mark it as unavailable instead.';
+                } else {
+                    $stmt = $conn->prepare("DELETE FROM services WHERE service_id = ?");
+                    $stmt->bind_param("i", $service_id);
+                    if ($stmt->execute()) {
+                        $success_msg = 'Activity deleted successfully!';
+                    } else {
+                        $error_msg = 'Error deleting activity: ' . $conn->error;
+                    }
+                    $stmt->close();
+                }
             }
         }
     }
@@ -139,35 +144,37 @@ $activities = $conn->query("SELECT * FROM services ORDER BY service_id DESC");
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-            <!-- Create New Activity Form -->
-            <div class="bg-white p-6 md:p-8 rounded-2xl shadow-xl border-t-4 border-amber-500">
-                <h3 class="text-2xl font-extrabold text-gray-900 mb-6">Create New Activity</h3>
-                <form method="POST" class="space-y-5">
-                    <input type="hidden" name="form_action" value="create">
+            <?php if (isset($_SESSION['role']) && $_SESSION['role'] == 'manager'): ?>
+                <!-- Create New Activity Form -->
+                <div class="bg-white p-6 md:p-8 rounded-2xl shadow-xl border-t-4 border-amber-500">
+                    <h3 class="text-2xl font-extrabold text-gray-900 mb-6">Create New Activity</h3>
+                    <form method="POST" class="space-y-5">
+                        <input type="hidden" name="form_action" value="create">
 
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">Activity Name</label>
-                        <input type="text" name="name" required placeholder="e.g. Spa Treatment"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500">
-                    </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">Activity Name</label>
+                            <input type="text" name="name" required placeholder="e.g. Spa Treatment"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500">
+                        </div>
 
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-1">Cost (£)</label>
-                        <input type="number" name="cost" required min="0" step="0.01" placeholder="0.00"
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500">
-                    </div>
+                        <div>
+                            <label class="block text-sm font-bold text-gray-700 mb-1">Cost (£)</label>
+                            <input type="number" name="cost" required min="0" step="0.01" placeholder="0.00"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-amber-500 focus:border-amber-500">
+                        </div>
 
-                    <div class="flex items-center gap-3">
-                        <input type="checkbox" name="is_available" id="is_available" checked
-                               class="w-5 h-5 text-amber-500 border-gray-300 rounded focus:ring-amber-500">
-                        <label for="is_available" class="text-sm font-bold text-gray-700">Available for booking</label>
-                    </div>
+                        <div class="flex items-center gap-3">
+                            <input type="checkbox" name="is_available" id="is_available" checked
+                                class="w-5 h-5 text-amber-500 border-gray-300 rounded focus:ring-amber-500">
+                            <label for="is_available" class="text-sm font-bold text-gray-700">Available for booking</label>
+                        </div>
 
-                    <button type="submit" class="w-full py-3 px-4 bg-amber-500 text-gray-900 font-bold rounded-lg shadow-md hover:bg-amber-600 transition">
-                        Create Activity
-                    </button>
-                </form>
-            </div>
+                        <button type="submit" class="w-full py-3 px-4 bg-amber-500 text-gray-900 font-bold rounded-lg shadow-md hover:bg-amber-600 transition">
+                            Create Activity
+                        </button>
+                    </form>
+                </div>
+            <?php endif; ?>
 
             <!-- Existing Activities List -->
             <div class="lg:col-span-2 bg-white rounded-2xl shadow-xl overflow-hidden border-t-4 border-amber-500">
@@ -200,17 +207,21 @@ $activities = $conn->query("SELECT * FROM services ORDER BY service_id DESC");
                                             <?php endif; ?>
                                         </td>
                                         <td class="px-6 py-4 text-center">
-                                            <button class="px-3 py-2 bg-blue-500 text-white text-sm font-semibold rounded-lg hover:bg-blue-600 transition"
-                                                    onclick="openEditModal(<?php echo $activity['service_id']; ?>, '<?php echo htmlspecialchars(addslashes($activity['name'])); ?>', <?php echo $activity['cost']; ?>, <?php echo $activity['is_available']; ?>)">
-                                                Edit
-                                            </button>
-                                            <form method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this activity?')">
-                                                <input type="hidden" name="form_action" value="delete">
-                                                <input type="hidden" name="service_id" value="<?php echo $activity['service_id']; ?>">
-                                                <button type="submit" class="px-3 py-2 bg-red-500 text-white text-sm font-semibold rounded-lg hover:bg-red-600 transition">
-                                                    Delete
+                                            <?php if (isset($_SESSION['role']) && $_SESSION['role'] == 'manager'): ?>
+                                                <button class="px-3 py-2 bg-blue-500 text-white text-sm font-semibold rounded-lg hover:bg-blue-600 transition"
+                                                        onclick="openEditModal(<?php echo $activity['service_id']; ?>, '<?php echo htmlspecialchars(addslashes($activity['name'])); ?>', <?php echo $activity['cost']; ?>, <?php echo $activity['is_available']; ?>)">
+                                                    Edit
                                                 </button>
-                                            </form>
+                                                <form method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this activity?')">
+                                                    <input type="hidden" name="form_action" value="delete">
+                                                    <input type="hidden" name="service_id" value="<?php echo $activity['service_id']; ?>">
+                                                    <button type="submit" class="px-3 py-2 bg-red-500 text-white text-sm font-semibold rounded-lg hover:bg-red-600 transition">
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            <?php else: ?>
+                                                <span class="text-gray-400 text-sm font-medium">View Only</span>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php endwhile; ?>
