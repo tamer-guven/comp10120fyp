@@ -12,29 +12,26 @@ error_reporting(E_ALL);
 // Should weight busyness based on length of task.
 // Make a lookup table for types of cleaning jobs.
 
-function assign_task($time, $duration){
+function assign_task($time_obj, $duration, $time_tolerance=30){
     $order = get_task_count();
     $length = count($order);
-    $time_tolerance = 30; //scheduled cleaning can happen within 30 minutes of original time.
-    
+    //$time_tolerance = 30; //scheduled cleaning can happen within 30 minutes of original time.
+
     for ($i=0; $i<$length; $i++){
         $cur_staff = $order[$i]['staff_id'];
 
         //see if there is free time in the next 30 minutes
-        for ($i=0; $i<=$time_tolerance; $i+=10){
-            $conflicts = is_cleaner_free($cur_staff, $time, $duration);
-            if ($conflicts == 0)
-                return $cur_staff;
+        for ($j=0; $j<=$time_tolerance; $j+=10){
+            $check_time_obj = $time_obj->modify("+{$j} minutes");
+
+            $conflicts = is_cleaner_free($cur_staff, $check_time_obj, $duration);
+            if ($conflicts == 0){
+                $check_time_str = $check_time_obj->format('Y-m-d H:i:s');
+                return ['staff_id'=>$cur_staff, 'scheduled time'=>$check_time_str];
+            }            
         }   
     }
     return null;
-}
-
-function assign_and_update_db($request_id, $time, $duration){
-    $staff_id = assign_task($time, $duration);
-    if ($staff_id){
-        update_hk($staff_id, $request_id);
-    }
 }
 
 function get_task_count(){
@@ -57,14 +54,20 @@ function get_task_count(){
     return $counts;
 }
 
-function is_cleaner_free($staff_id, $start_time, $duration) {
+function is_cleaner_free($staff_id, $start_time_obj, $duration) {
+    /*
+    $staff_id: int
+    $start_time_obj: DateTimeImmutable
+    $duration: int
+    */
     global $conn;
 
     // Calculate end time
 
-    $start_time_obj = new DateTime($start_time);
-    $end_time_obj = clone $start_time_obj;
-    $end_time_obj->modify("+{$duration} minutes");
+    //$start_time_obj = new DateTime($start_time);
+    //$end_time_obj = clone $start_time_obj;
+    $end_time_obj =  $start_time_obj->modify("+{$duration} minutes");
+    $start_time= $start_time_obj->format('Y-m-d H:i:s');
     $end_time= $end_time_obj->format('Y-m-d H:i:s');
 
     $sql = "
@@ -123,14 +126,29 @@ function insert_into_hk($staff_id, $room_id, $service_type, $time, $duration, $n
     $stmt->close();
 }
 
+function assign_and_insert($room_id, $service_type, $time_obj, $estimated_duration, $hk_notes){
+
+    $assigned = assign_task($time_obj, $estimated_duration);
+
+    if($assigned){
+        $status = 'assigned';
+        $staff_id = $assigned['staff_id'];
+        $scheduled_time = $assigned['scheduled time'];
+    }
+    else{
+        $status = 'scheduled';
+        $staff_id = null;
+        $scheduled_time = $time_obj->format('Y-m-d H:i:s');
+    }
+
+    // insert into db
+    insert_into_hk($staff_id, $room_id, $service_type, $scheduled_time, $estimated_duration, $hk_notes, $status);
+}
+
 function handle_checkout_hk($room_id){
     $timezone = new DateTimeZone("Europe/London");
-    $now = new DateTime('now', $timezone);
-    $now_string = date_format($now, "Y-m-d H:i:s");
+    $now_obj = new DateTimeImmutable('now', $timezone);
+    //$now_string = date_format($now, "Y-m-d H:i:s");
 
-    if($staff_id = assign_task($now_string, '45'))
-        $status = 'assigned';
-    else $status = 'scheduled';
-    
-    insert_into_hk($staff_id, $room_id, 'Checkout Clean', $now_string, '45', null, $status);
+    assign_and_insert($room_id, 'Checkout Clean', $now_obj, 45, null);
 }

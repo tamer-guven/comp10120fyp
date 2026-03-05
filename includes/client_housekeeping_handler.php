@@ -59,14 +59,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $booking_id = $_SESSION['current_booking_details']['booking_id'];
     $room_id = $_SESSION['current_booking_details']['room_id'];
 
-    if ($assigned_staff_id = assign_task($time, $estimated_duration)){
+    $time_obj = new DateTimeImmutable($time);
+
+    assign_and_insert($room_id, $service_type, $time_obj, $estimated_duration, $hk_notes);
+    /*
+    $assigned = assign_task($time_obj, $estimated_duration);
+
+    if($assigned){
         $status = 'assigned';
+        $staff_id = $assigned['staff_id'];
+        $scheduled_time = $assigned['scheduled time'];
     }
-    else
+    else{
         $status = 'scheduled';
+        $staff_id = null;
+        $scheduled_time = $time;
+    }
     
     // insert into db
-    insert_into_hk($assigned_staff_id, $room_id, $service_type, $time, $estimated_duration, $hk_notes, $status);
+    insert_into_hk($staff_id, $room_id, $service_type, $scheduled_time, $estimated_duration, $hk_notes, $status);
+    */
 
     $conn->close();
     echo 'Success';
