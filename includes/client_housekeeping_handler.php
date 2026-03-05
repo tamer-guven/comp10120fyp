@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../database/db.php';
+require_once 'housekeeping_scheduler.php';
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -38,26 +39,12 @@ function time_str_to_sql_datetime($time_str): string{
     }
 }
 
-function get_duration($task): int{
-    if ($task === "Full Cleaning")
-        return 45;
-    elseif ($task === "Towel & Amenity Refresh") {
-        return 5;
-    }
-    else
-        return 30;
-}
-
-//echo "<pre>";
-//print_r($_SESSION['']);
-//echo "</pre>";
-
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $service_type = $_POST['serviceType'] ?? null;
     $time = $_POST['timeSlot'] ?? null;
     $time = time_str_to_sql_datetime($time);
     $hk_notes = $_POST['notes'] ?? null;
-    $estimated_duration = get_duration($service_type);
+    $estimated_duration = get_task_duration($service_type);
 
     //verify there is all the right data.
     if (!$service_type || !$time){
@@ -72,21 +59,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $booking_id = $_SESSION['current_booking_details']['booking_id'];
     $room_id = $_SESSION['current_booking_details']['room_id'];
 
-    //insert into housekeeping requests table
-    $sql = "INSERT INTO housekeeping_requests
-    (room_id, service_type, scheduled_datetime, estimated_duration, notes, status)
-    VALUES (?, ?, ?, ?, ?, 'scheduled')";
-    
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("issis", $room_id, $service_type, $time, $estimated_duration, $hk_notes);
-
-    if ($stmt->execute()) {
-        echo "Success";
-    } else {
-        echo "Database error.";
+    if ($assigned_staff_id = assign_task($time, $estimated_duration)){
+        $status = 'assigned';
     }
+    else
+        $status = 'scheduled';
+    
+    // insert into db
+    insert_into_hk($assigned_staff_id, $room_id, $service_type, $time, $estimated_duration, $hk_notes, $status);
 
-    $stmt->close();
     $conn->close();
+    echo 'Success';
+} else {
+    http_response_code(405);
+    echo "Invalid request";
 }
 exit;

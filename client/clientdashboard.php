@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../database/db.php';
+require '../includes/housekeeping_scheduler.php';
 
 // If the session variable isn't set, kick them back to login
 if (!isset($_SESSION['user_id'])) {
@@ -131,16 +132,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         
+        // get room_id for housekeeping
+        $get = $conn->prepare("SELECT room_id FROM bookings WHERE booking_id = ?"); 
+        $get->bind_param("i", $booking_id); 
+        $get->execute(); 
+        $result = $get->get_result(); 
+        $row = $result->fetch_assoc(); 
+        $room_id = $row['room_id'];
+
+        // set booking status to checked out
         $update = $conn->prepare("UPDATE bookings SET booking_status='checked_out' WHERE booking_id = ?");
         $update->bind_param("i", $booking_id);
         
         if ($update->execute()) {
+            //assign housekeeping
+            ob_start();
+            handle_checkout_hk($room_id);
+            ob_end_clean();
+
             echo json_encode(['success' => true, 'message' => 'Checked out successfully.', 'booking_id' => $booking_id]);
         } else {
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => 'Database error: ' . $conn->error]);
         }
-        $update->close();
+        $update->close();        
     }
     else {
         http_response_code(400);

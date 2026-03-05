@@ -1,6 +1,6 @@
 <?php
 
-session_start();
+//session_start();
 require_once '../database/db.php';
 
 ini_set('display_errors', 1);
@@ -12,16 +12,23 @@ error_reporting(E_ALL);
 // Should weight busyness based on length of task.
 // Make a lookup table for types of cleaning jobs.
 
-function assign_task($task_record){
+function assign_task($time, $duration){
     $order = get_task_count();
     $length = count($order);
     for ($i=0; $i<$length; $i++){
         $cur_staff = $order[$i]['staff_id'];
-        if (is_cleaner_free($cur_staff, $task_record))
-            update_hk($cur_staff,$task_record['request_id']);
+        if (is_cleaner_free($cur_staff, $time, $duration))
+            //update_hk($cur_staff,$request_id);
             return $cur_staff;
     }
     return null;
+}
+
+function assign_and_update_db($request_id, $time, $duration){
+    $staff_id = assign_task($time, $duration);
+    if ($staff_id){
+        update_hk($staff_id, $request_id);
+    }
 }
 
 function get_task_count(){
@@ -44,40 +51,50 @@ function get_task_count(){
     return $counts;
 }
 
-function is_cleaner_free($staff_id, $task){
+function is_cleaner_free($staff_id, $start_time, $duration){
     //todo
     return true;
 }
 
-/*
-function get_all_cleaners(){
-    $sql = "SELECT 'staff_id' FROM staff WHERE lower(role) = 'cleaner'";
-
-    global $conn;
-    $stmt = $conn->prepare($sql); 
-    $stmt->bind_param("i", $staff_id); $stmt->execute(); 
-    $result = $stmt->get_result(); 
-    return $result->fetch_assoc();
-}
-
-function get_record_by_ID($staff_id){
-    $sql = "SELECT * FROM staff WHERE staff_id = ?";
-
-    global $conn;
-    $stmt = $conn->prepare($sql); 
-    $stmt->bind_param("i", $staff_id); $stmt->execute(); 
-    $result = $stmt->get_result(); 
-    return $result->fetch_assoc();
-}
-*/
-
 function update_hk($staff_id, $request_id){
-    $sql = "UPDATE `housekeeping_requests` SET `staff_id` = ? WHERE `housekeeping_requests`.`request_id` = ?;";
+    $sql = "UPDATE `housekeeping_requests` SET `staff_id` = ?, `status` = 'assigned' WHERE `housekeeping_requests`.`request_id` = ?;";
     global $conn;
     $stmt = $conn->prepare($sql); 
     $stmt->bind_param("ii", $staff_id, $request_id); $stmt->execute(); 
 }
 
+function get_task_duration($task): int{
+    if ($task === "Full Cleaning")
+        return 45;
+    elseif ($task === "Towel & Amenity Refresh") {
+        return 5;
+    }
+    else
+        return 30;
+}
 
-print_r($i);
-//echo assign_task(['request_id'=>3]);
+function insert_into_hk($staff_id, $room_id, $service_type, $time, $duration, $notes, $status){
+    //insert into housekeeping requests table
+    $sql = "INSERT INTO housekeeping_requests
+    (staff_id, room_id, service_type, scheduled_datetime, estimated_duration, notes, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?)";
+    
+    global $conn;
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("iississ", $staff_id, $room_id, $service_type, $time, $duration, $notes, $status);
+
+    $stmt->execute();
+    $stmt->close();
+}
+
+function handle_checkout_hk($room_id){
+    $timezone = new DateTimeZone("Europe/London");
+    $now = new DateTime('now', $timezone);
+    $now_string = date_format($now, "Y-m-d H:i:s");
+
+    if($staff_id = assign_task($now_string, '45'))
+        $status = 'assigned';
+    else $status = 'scheduled';
+    
+    insert_into_hk($staff_id, $room_id, 'Full Cleaning', $now_string, '45', null, $status);
+}
