@@ -173,18 +173,9 @@ $stmt->bind_param("i", $customer_id);
 $stmt->execute();
 $result = $stmt->get_result();
 $current_booking = $result->fetch_assoc();
-if ($current_booking){
-    $_SESSION['current_booking_details'] = array('booking_id'=>$current_booking['booking_id'], 'booking_status'=>$current_booking['booking_status'], 'room_id'=>$current_booking['room_id'], 'room_number'=>$current_booking['room_number'], 'customer_id'=>$customer_id);
-}
-else{
-    $_SESSION['current_booking_details'] = null;
-}
+
 $stmt->close();
 
-
-echo "<pre>";
-print_r($_SESSION);
-echo "</pre>";
 ?>
 
 <!DOCTYPE html>
@@ -286,7 +277,7 @@ echo "</pre>";
                         <!-- Dynamic Link: Housekeeping (First row, first button) -->
                         <?php if ($current_booking && $current_booking['booking_status'] === 'checked_in'):?>
                             <button class="py-3 px-4 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition" 
-                                onclick="goToPage('clienthousekeeping.php')">
+                                onclick="goToPage('clienthousekeeping.php?booking_id=<?php echo $current_booking['booking_id']; ?>')">
                                 Request Housekeeping
                             </button>
                         <?php else:?>

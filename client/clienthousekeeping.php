@@ -14,6 +14,21 @@ if (!isset($_SESSION['user_id'])) {
     exit();
 }
 
+$booking_id = $_GET['booking_id'];
+
+$stmt = $conn->prepare("SELECT b.booking_id, b.customer_id, b.room_id, r.room_number FROM bookings b LEFT JOIN rooms r ON b.room_id = r.room_id WHERE b.booking_id = ? LIMIT 1");
+    
+$stmt->bind_param("i", $booking_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$booking = $result->fetch_assoc();
+
+if ($booking['customer_id'] != $_SESSION['user_id']){
+    header("Location: clientdashboard.php");
+    exit();
+}
+
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -87,10 +102,13 @@ if (!isset($_SESSION['user_id'])) {
         <div class="bg-white p-6 sm:p-10 rounded-2xl shadow-xl border-t-4 border-amber-500">
             <form id="housekeepingForm">
 
+                <input type="hidden" name="booking_id" value="<?php echo $booking['booking_id'];?>">
+                <input type="hidden" name="room_id" value="<?php echo $booking['room_id'];?>">
+
                 <!-- Room Info (Placeholder) -->
                 <div class="mb-6 pb-4 border-b">
                     <h3 class="text-xl font-bold text-gray-800">Room Details</h3>
-                    <p class="text-gray-600">Requesting service for Room <span class="font-semibold text-amber-600"><?= $_SESSION['current_booking_details']['room_number'] ?></span>.</p>
+                    <p class="text-gray-600">Requesting service for Room <span class="font-semibold text-amber-600"><?= $booking['room_number'] ?></span>.</p>
                 </div>
 
                 <!-- 1. Service Type -->

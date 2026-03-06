@@ -45,40 +45,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $time = time_str_to_sql_datetime($time);
     $hk_notes = $_POST['notes'] ?? null;
     $estimated_duration = get_task_duration($service_type);
+    $booking_id = $_POST['booking_id'] ?? null;
+    $room_id = $_POST['room_id'] ?? null;
 
     //verify there is all the right data.
     if (!$service_type || !$time){
         echo "missing required fields";
         exit;
     }
-    if (!isset($_SESSION['current_booking_details'])){
+    if (!$booking_id){
         echo "no current booking found";
         exit;
     }
-
-    $booking_id = $_SESSION['current_booking_details']['booking_id'];
-    $room_id = $_SESSION['current_booking_details']['room_id'];
+    if (!$room_id){
+        echo "no room found";
+        exit;
+    }
 
     $time_obj = new DateTimeImmutable($time);
 
     assign_and_insert($room_id, $service_type, $time_obj, $estimated_duration, $hk_notes);
-    /*
-    $assigned = assign_task($time_obj, $estimated_duration);
 
-    if($assigned){
-        $status = 'assigned';
-        $staff_id = $assigned['staff_id'];
-        $scheduled_time = $assigned['scheduled time'];
-    }
-    else{
-        $status = 'scheduled';
-        $staff_id = null;
-        $scheduled_time = $time;
-    }
-    
-    // insert into db
-    insert_into_hk($staff_id, $room_id, $service_type, $scheduled_time, $estimated_duration, $hk_notes, $status);
-    */
 
     $conn->close();
     echo 'Success';
