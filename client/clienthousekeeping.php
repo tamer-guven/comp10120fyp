@@ -1,3 +1,35 @@
+<?php
+/* Client requests a clean, added to hk request database.
+
+notes:
+- What if a client has multiple rooms
+*/
+
+session_start();
+require_once '../database/db.php';
+
+// Redirect to login if not logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: clientlogin.php");
+    exit();
+}
+
+$booking_id = $_GET['booking_id'];
+
+$stmt = $conn->prepare("SELECT b.booking_id, b.customer_id, b.room_id, r.room_number FROM bookings b LEFT JOIN rooms r ON b.room_id = r.room_id WHERE b.booking_id = ? LIMIT 1");
+    
+$stmt->bind_param("i", $booking_id);
+$stmt->execute();
+$result = $stmt->get_result();
+$booking = $result->fetch_assoc();
+
+if ($booking['customer_id'] != $_SESSION['user_id']){
+    header("Location: clientdashboard.php");
+    exit();
+}
+
+
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -52,7 +84,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             <h1 class="text-3xl font-extrabold text-gray-900 tracking-wider">The <span class="text-amber-500">Bee</span> Hotel</h1>
             <nav class="space-x-4 flex items-center">
-                <button class="px-4 py-2 text-gray-700 rounded-lg hover:text-amber-600 transition duration-150 font-medium" onclick="goToPage('clientdashboard.html')">
+                <button class="px-4 py-2 text-gray-700 rounded-lg hover:text-amber-600 transition duration-150 font-medium" onclick="goToPage('clientdashboard.php')">
                     &larr; Back to Dashboard
                 </button>
                 <button id="logoutBtn" class="px-5 py-2 bg-gray-800 text-white rounded-lg shadow-md hover:bg-gray-900 transition duration-150 font-medium" onclick="handleLogout()">
@@ -70,10 +102,13 @@
         <div class="bg-white p-6 sm:p-10 rounded-2xl shadow-xl border-t-4 border-amber-500">
             <form id="housekeepingForm">
 
+                <input type="hidden" name="booking_id" value="<?php echo $booking['booking_id'];?>">
+                <input type="hidden" name="room_id" value="<?php echo $booking['room_id'];?>">
+
                 <!-- Room Info (Placeholder) -->
                 <div class="mb-6 pb-4 border-b">
                     <h3 class="text-xl font-bold text-gray-800">Room Details</h3>
-                    <p class="text-gray-600">Requesting service for Room <span class="font-semibold text-amber-600">402</span>.</p>
+                    <p class="text-gray-600">Requesting service for Room <span class="font-semibold text-amber-600"><?= $booking['room_number'] ?></span>.</p>
                 </div>
 
                 <!-- 1. Service Type -->
@@ -127,7 +162,7 @@
                 Your request has been successfully scheduled. You will be notified when staff begins service.
             </p>
 
-            <button onclick="goToPage('clientdashboard.html')" class="w-full py-3 bg-amber-500 text-gray-900 font-semibold text-lg rounded-xl shadow-md hover:bg-amber-600 transition duration-200">
+            <button onclick="goToPage('clientdashboard.php')" class="w-full py-3 bg-amber-500 text-gray-900 font-semibold text-lg rounded-xl shadow-md hover:bg-amber-600 transition duration-200">
                 Go Back to Dashboard
             </button>
         </div>
@@ -140,7 +175,7 @@
             window.location.href = filename;
         }
         function handleLogout() {
-            goToPage('clientlogin.html');
+            goToPage('clientlogin.php');
         }
 
         // --- Time Slot Generation Logic ---
@@ -190,19 +225,31 @@
         document.getElementById('housekeepingForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
-            const serviceType = document.querySelector('input[name="serviceType"]:checked').value;
-            const timeSlot = document.getElementById('timeSlot').value;
-            const notes = document.getElementById('notes').value;
+            const formData = new FormData(this);
 
-            // In a real app, this would send an API request to the hotel system
-            console.log('Housekeeping Request Submitted:', { serviceType, timeSlot, notes });
+            fetch('../includes/client_housekeeping_handler.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            //.then(data => {console.log("PHP response:", data);}
             
-            // 1. Show the confirmation modal
-            showHousekeepingModal(serviceType, timeSlot);
+            .then(data => {
+                console.log("PHP response:", data);
 
-            // 2. Optionally reset the form after successful submission
-            this.reset();
-            generateTimeSlots(); // Re-select default time after reset
+                if (data === "Success"){
+                // 1. Show the confirmation modal
+                    showHousekeepingModal(formData.get('serviceType'), formData.get('timeSlot'));
+                }
+                else{
+                    alert("Error: ", data);
+                }
+            })
+
+            .catch(err => {
+                console.error(err);
+                alert("Network error");
+            });
         });
 
         // Initialize time slots when the page loads

@@ -1,6 +1,7 @@
 <?php
 session_start();
-require_once '../database/db.php';
+require_once __DIR__ . '/../database/db.php';
+require '../includes/housekeeping_scheduler.php';
 
 // If the session variable isn't set, kick them back to login
 if (!isset($_SESSION['user_id'])) {
@@ -9,34 +10,172 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 $customer_id = $_SESSION['user_id'];
-$first_name = $_SESSION['first_name'];
+$conn->select_db("hotel_management_db");
 
-// Query to find the most recent active booking for this customer
-// This joins the bookings, rooms, and room_types tables to get the full stay details
-$query = "SELECT b.*, r.room_number, rt.type 
-          FROM bookings b 
-          LEFT JOIN rooms r ON b.room_id = r.room_id 
-          JOIN room_types rt ON b.room_type_id = rt.room_type_id 
-          WHERE b.customer_id = ? AND b.booking_status IN ('booked', 'checked_in') 
-          ORDER BY b.check_in_date DESC LIMIT 1";
+// Handle check-in/check-out API requests
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    header('Content-Type: application/json');
+    
+    $booking_id = isset($_POST['booking_id']) && is_numeric($_POST['booking_id']) ? (int)$_POST['booking_id'] : null;
+    $action = isset($_POST['action']) ? $_POST['action'] : null;
+    
+    if (!$booking_id || !$action) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Missing booking_id or action.']);
+        exit;
+    }
+    
+    // Fetch booking and verify it belongs to this customer
+    $stmt = $conn->prepare("SELECT booking_id, booking_status, customer_id FROM bookings WHERE booking_id = ? LIMIT 1");
+    $stmt->bind_param("i", $booking_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $booking = $result->fetch_assoc();
+    $stmt->close();
+    
+    if (!$booking || $booking['customer_id'] != $customer_id) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Unauthorized.']);
+        exit;
+    }
+    
+    // Handle check-in
+    if ($action === 'checkin') {
+        if ($booking['booking_status'] !== 'booked') {
+            http_response_code(409);
+            echo json_encode(['success' => false, 'message' => 'Booking must be in booked status to check in.']);
+            exit;
+        }
+        
+        // Fetch the booking details including room_type_id
+        $bookingDetails = $conn->prepare("
+            SELECT b.booking_id, b.room_id, b.check_in_date, b.check_out_date, b.room_type_id 
+            FROM bookings b 
+            WHERE b.booking_id = ? LIMIT 1
+        ");
+        
+        if (!$bookingDetails) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $conn->error]);
+            exit;
+        }
+        
+        $bookingDetails->bind_param("i", $booking_id);
+        $bookingDetails->execute();
+        $bookingResult = $bookingDetails->get_result();
+        $bookingData = $bookingResult->fetch_assoc();
+        $bookingDetails->close();
+        
+        if (!$bookingData) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Could not fetch booking details.']);
+            exit;
+        }
+        
+        $room_type_id = $bookingData['room_type_id'];
+        $check_in = $bookingData['check_in_date'];
+        $check_out = $bookingData['check_out_date'];
+        
+        // Find an available room of the same type that is not occupied during the stay dates
+        // Only 'checked_in' bookings block a room since 'booked' ones don't have a real room yet
+        $availableRoom = $conn->prepare("
+            SELECT r.room_id, r.room_number 
+            FROM rooms r 
+            WHERE r.room_type_id = ? 
+            AND r.room_id NOT IN (
+                SELECT b.room_id 
+                FROM bookings b 
+                WHERE b.booking_status = 'checked_in'
+                AND b.check_in_date < ? 
+                AND b.check_out_date > ?
+            )
+            ORDER BY r.room_id
+            LIMIT 1
+        ");
+        
+        if (!$availableRoom) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $conn->error]);
+            exit;
+        }
+        
+        $availableRoom->bind_param("iss", $room_type_id, $check_out, $check_in);
+        $availableRoom->execute();
+        $roomResult = $availableRoom->get_result();
+        $room = $roomResult->fetch_assoc();
+        $availableRoom->close();
+        
+        // If no available room found, send error
+        if (!$room) {
+            http_response_code(409);
+            echo json_encode(['success' => false, 'message' => 'The booked room type is not currently available. Please contact reception for assistance.']);
+            exit;
+        }
+        
+        // Update booking with the assigned room and check-in status
+        $update = $conn->prepare("UPDATE bookings SET room_id = ?, booking_status='checked_in', actual_check_in = NOW() WHERE booking_id = ?");
+        $update->bind_param("ii", $room['room_id'], $booking_id);
+        
+        if ($update->execute()) {
+            echo json_encode(['success' => true, 'message' => 'Checked in successfully. Room assigned: #' . $room['room_number'], 'booking_id' => $booking_id, 'room_number' => $room['room_number']]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $conn->error]);
+        }
+        $update->close();
+    }
+    // Handle check-out
+    elseif ($action === 'checkout') {
+        if ($booking['booking_status'] !== 'checked_in') {
+            http_response_code(409);
+            echo json_encode(['success' => false, 'message' => 'Booking must be checked in to check out.']);
+            exit;
+        }
+        
+        // get room_id for housekeeping
+        $get = $conn->prepare("SELECT room_id FROM bookings WHERE booking_id = ?"); 
+        $get->bind_param("i", $booking_id); 
+        $get->execute(); 
+        $result = $get->get_result(); 
+        $row = $result->fetch_assoc(); 
+        $room_id = $row['room_id'];
 
-$stmt = $conn->prepare($query);
+        // set booking status to checked out
+        $update = $conn->prepare("UPDATE bookings SET booking_status='checked_out' WHERE booking_id = ?");
+        $update->bind_param("i", $booking_id);
+        
+        if ($update->execute()) {
+            //assign housekeeping
+            ob_start();
+            handle_checkout_hk($room_id);
+            ob_end_clean();
+
+            echo json_encode(['success' => true, 'message' => 'Checked out successfully.', 'booking_id' => $booking_id]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'message' => 'Database error: ' . $conn->error]);
+        }
+        $update->close();        
+    }
+    else {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Invalid action.']);
+    }
+    
+    $conn->close();
+    exit;
+}
+
+// Fetch the current/latest booking for this customer
+$stmt = $conn->prepare("SELECT b.booking_id, b.check_in_date, b.check_out_date, b.booking_status, b.actual_check_in, b.room_id, r.room_number, rt.type FROM bookings b LEFT JOIN rooms r ON b.room_id = r.room_id JOIN room_types rt ON b.room_type_id = rt.room_type_id WHERE b.customer_id = ? ORDER BY b.check_in_date DESC LIMIT 1");
+    
 $stmt->bind_param("i", $customer_id);
 $stmt->execute();
-$current_booking = $stmt->get_result()->fetch_assoc();
+$result = $stmt->get_result();
+$current_booking = $result->fetch_assoc();
 
-// Query to find past bookings (checked_out status)
-$past_query = "SELECT b.*, r.room_number, rt.type 
-               FROM bookings b 
-               LEFT JOIN rooms r ON b.room_id = r.room_id 
-               JOIN room_types rt ON b.room_type_id = rt.room_type_id 
-               WHERE b.customer_id = ? AND b.booking_status = 'checked_out'
-               ORDER BY b.check_in_date DESC LIMIT 10";
+$stmt->close();
 
-$past_stmt = $conn->prepare($past_query);
-$past_stmt->bind_param("i", $customer_id);
-$past_stmt->execute();
-$past_bookings = $past_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -95,19 +234,33 @@ $past_bookings = $past_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
                         </div>
                     </div>
 
-                    <div class="border-t pt-4 mt-4">
-                        <h4 class="text-xl font-bold mb-3 text-gray-800">In-Stay Services</h4>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <button class="py-3 px-4 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition" onclick="goToPage('clienthousekeeping.php')">
+                <div class="border-t pt-4 mt-4">
+                    <h4 class="text-xl font-bold mb-3 text-gray-800">In-Stay Services</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        
+                        <!-- Dynamic Link: Housekeeping (First row, first button) -->
+                        <?php if ($current_booking && $current_booking['booking_status'] === 'checked_in'):?>
+                            <button class="py-3 px-4 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition" 
+                                onclick="goToPage('clienthousekeeping.php?booking_id=<?php echo $current_booking['booking_id']; ?>')">
                                 Request Housekeeping
                             </button>
-                            <button class="py-3 px-4 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition" onclick="goToPage('clientactivities.php')">
-                                Book Activities
+                        <?php else:?>
+                            <button class="py-3 px-4 bg-gray-200 text-gray-300 font-semibold rounded-lg shadow-md">
+                                Request Housekeeping
                             </button>
-                            <button class="py-3 px-4 bg-amber-500 text-gray-900 font-semibold rounded-lg shadow-md hover:bg-amber-600 transition sm:col-span-2" onclick="goToPage('clientexpenses.php')">
-                                View Expenses
-                            </button>
-                        </div>
+                        <?php endif; ?>
+                        
+                        <!-- Dynamic Link: Activities -->
+                        <button class="py-3 px-4 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition" 
+                                onclick="goToPage('clientactivities.php')">
+                            Book Activities
+                        </button>
+                        
+                        <!-- Dynamic Link: Expenses (Second row, spanning 2 columns) -->
+                        <button class="py-3 px-4 bg-amber-500 text-gray-900 font-semibold rounded-lg shadow-md hover:bg-amber-600 transition sm:col-span-2" 
+                                onclick="goToPage('clientexpenses.php')">
+                            View Expenses
+                        </button>
                     </div>
                 </div>
             <?php else: ?>

@@ -127,21 +127,21 @@ check_created("services_customers", $conn, $sql);
 
 $sql = "CREATE TABLE IF NOT EXISTS housekeeping_requests(
   request_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  customer_id INT UNSIGNED DEFAULT NULL,
-  room_id INT UNSIGNED DEFAULT NULL,
-  room_number VARCHAR(20) DEFAULT NULL,
+  staff_id INT UNSIGNED DEFAULT NULL,
+  room_id INT UNSIGNED NOT NULL,
   service_type VARCHAR(255) NOT NULL,
-  scheduled_datetime DATETIME NOT NULL,
+  scheduled_datetime DATETIME DEFAULT NULL,
+  estimated_duration INT NOT NULL,
   notes TEXT,
   status ENUM('scheduled','assigned','in_progress','completed','cancelled') NOT NULL DEFAULT 'scheduled',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_hk_customer
-    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+  CONSTRAINT fk_hk_cleaner
+    FOREIGN KEY (staff_id) REFERENCES staff(staff_id)
     ON DELETE SET NULL
     ON UPDATE CASCADE,
   CONSTRAINT fk_hk_room
     FOREIGN KEY (room_id) REFERENCES rooms(room_id)
-    ON DELETE SET NULL
+    ON DELETE RESTRICT
     ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
 
