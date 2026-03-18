@@ -4,7 +4,7 @@ require_once 'db.php';
 $conn->select_db("hotel_management_db");
 
 // Test staff data
-$first_name = "Admin";
+$first_name = "manager";
 $last_name = "User";
 $role = "Administrator";
 $phone_number = "1234567890";

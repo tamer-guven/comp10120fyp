@@ -115,7 +115,7 @@ if ($filter === 'all' || $filter === 'services') {
         <!-- Revenue Summary -->
         <div class="bg-gradient-to-r from-amber-500 to-amber-600 p-8 rounded-2xl shadow-lg mb-8 text-white">
             <h3 class="text-2xl font-bold mb-2">Total Revenue</h3>
-            <p class="text-5xl font-extrabold">$<?php echo number_format($total_revenue, 2); ?></p>
+            <p class="text-5xl font-extrabold">£<?php echo number_format($total_revenue, 2); ?></p>
         </div> 
 
         <!-- Search & Filter Section -->
@@ -185,7 +185,7 @@ if ($filter === 'all' || $filter === 'services') {
                                     <?php echo ucfirst(str_replace('_', ' ', $booking['booking_status'])); ?>
                                 </span>
                             </td>
-                            <td class="px-6 py-4 text-right font-bold text-gray-900">$<?php echo number_format($booking['price'], 2); ?></td>
+                            <td class="px-6 py-4 text-right font-bold text-gray-900">£<?php echo number_format($booking['price'], 2); ?></td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -222,7 +222,7 @@ if ($filter === 'all' || $filter === 'services') {
                             <td class="px-6 py-4 text-gray-700"><?php echo htmlspecialchars($service['first_name'] . ' ' . $service['last_name']); ?></td>
                             <td class="px-6 py-4 text-gray-700"><?php echo htmlspecialchars($service['email']); ?></td>
                             <td class="px-6 py-4 font-semibold text-gray-900"><?php echo htmlspecialchars($service['name']); ?></td>
-                            <td class="px-6 py-4 text-right font-bold text-gray-900">$<?php echo number_format($service['cost'], 2); ?></td>
+                            <td class="px-6 py-4 text-right font-bold text-gray-900">£<?php echo number_format($service['cost'], 2); ?></td>
                         </tr>
                         <?php endforeach; ?>
                     </tbody>
