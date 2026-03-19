@@ -6,7 +6,6 @@ require_once 'housekeeping_scheduler.php';
 $staff_id = $_SESSION['staff_id'] ?? null;
 $conn->select_db("hotel_management_db");
 
-// Handle check-in/check-out API requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     
@@ -25,12 +24,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     
-    // Fetch booking
     $stmt = $conn->prepare("SELECT booking_id, booking_status, room_id FROM bookings WHERE booking_id = ? LIMIT 1");
     $stmt->bind_param("i", $booking_id);
     $stmt->execute();
-    $result = $stmt->get_result();
-    $booking = $result->fetch_assoc();
+    $booking = $stmt->get_result()->fetch_assoc();
     $stmt->close();
     
     if (!$booking) {
@@ -39,7 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     
-    // Handle check-in
     if ($action === 'checkin') {
         if ($booking['booking_status'] !== 'booked') {
             http_response_code(409);
@@ -47,58 +43,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         
-        $bookingDetails = $conn->prepare("
-            SELECT b.booking_id, b.room_id, b.check_in_date, b.check_out_date, b.room_type_id 
-            FROM bookings b 
-            WHERE b.booking_id = ? LIMIT 1
-        ");
-        
-        if (!$bookingDetails) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'message' => 'Database error: ' . $conn->error]);
-            exit;
-        }
-        
+        $bookingDetails = $conn->prepare("SELECT room_type_id FROM bookings WHERE booking_id = ? LIMIT 1");
         $bookingDetails->bind_param("i", $booking_id);
         $bookingDetails->execute();
-        $bookingResult = $bookingDetails->get_result();
-        $bookingData = $bookingResult->fetch_assoc();
+        $bookingData = $bookingDetails->get_result()->fetch_assoc();
         $bookingDetails->close();
         
         $room_type_id = $bookingData['room_type_id'];
-        $check_in = $bookingData['check_in_date'];
-        $check_out = $bookingData['check_out_date'];
         
+        // FIX: Find a room that is physically empty and has no pending cleaning tasks
         $availableRoom = $conn->prepare("
             SELECT r.room_id, r.room_number 
             FROM rooms r 
             WHERE r.room_type_id = ? 
             AND r.room_id NOT IN (
-                SELECT b.room_id 
-                FROM bookings b 
-                WHERE b.booking_status = 'checked_in'
-                AND b.check_in_date < ? 
-                AND b.check_out_date > ?
+                SELECT b.room_id FROM bookings b WHERE b.booking_status = 'checked_in' AND b.room_id IS NOT NULL
+            )
+            AND r.room_id NOT IN (
+                SELECT hk.room_id FROM housekeeping_requests hk WHERE hk.status != 'completed'
             )
             ORDER BY r.room_id
             LIMIT 1
         ");
         
-        if (!$availableRoom) {
-            http_response_code(500);
-            echo json_encode(['success' => false, 'message' => 'Database error: ' . $conn->error]);
-            exit;
-        }
-        
-        $availableRoom->bind_param("iss", $room_type_id, $check_out, $check_in);
+        $availableRoom->bind_param("i", $room_type_id);
         $availableRoom->execute();
-        $roomResult = $availableRoom->get_result();
-        $room = $roomResult->fetch_assoc();
+        $room = $availableRoom->get_result()->fetch_assoc();
         $availableRoom->close();
         
         if (!$room) {
             http_response_code(409);
-            echo json_encode(['success' => false, 'message' => 'The booked room type is not currently available. Please contact management or find an alternative room type.']);
+            echo json_encode(['success' => false, 'message' => 'No clean, vacant rooms of this type are currently available.']);
             exit;
         }
         
@@ -113,7 +88,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $update->close();
     }
-    // Handle check-out
     elseif ($action === 'checkout') {
         if ($booking['booking_status'] !== 'checked_in') {
             http_response_code(409);
@@ -126,7 +100,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $update->bind_param("i", $booking_id);
         
         if ($update->execute()) {
-            // Trigger housekeeping assignment
             if (!empty($room_id)) {
                 ob_start();
                 handle_checkout_hk($room_id);
@@ -139,16 +112,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $update->close();
     }
-    else {
-        http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Invalid action.']);
-    }
     
     $conn->close();
-    exit;
-} else {
-    http_response_code(405);
-    echo json_encode(['success' => false, 'message' => 'Method not allowed.']);
     exit;
 }
 ?>
