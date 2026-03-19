@@ -23,7 +23,7 @@ if ($stmt->execute()) {
     echo "Staff user created successfully!<br>";
     echo "Email: " . $email . "<br>";
     echo "Password: " . $password . "<br>";
-    echo "<a href='../staff/stafflogin.php'>Go to Staff Login</a>";
+    echo "<a href='../login.php'>Go to Staff Login</a>";
 } else {
     echo "Error creating staff user: " . $stmt->error;
 }

@@ -9,23 +9,28 @@ if (!isset($_SESSION['user_id'])) {
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $customer_id = $_SESSION['user_id'];
-    $room_type_id = $_POST['room_type_id'];
+    $room_type_id = (int)$_POST['room_type_id'];
     $check_in = $_POST['check_in'];
     $check_out = $_POST['check_out'];
 
-    $today = date('Y-m-d');
-    if ($check_in < $today || $check_out <= $check_in) {
+    if ($check_in < date('Y-m-d') || $check_out <= $check_in) {
         header("Location: ../client/clientbook.php?error=dates");
         exit();
     }
 
-    $stmt = $conn->prepare("SELECT base_price FROM room_types WHERE room_type_id = ?");
-    $stmt->bind_param("i", $room_type_id);
-    $stmt->execute();
-    $type_result = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
+    // START TRANSACTION: Prevents race conditions during check-then-insert
+    $conn->begin_transaction();
 
-    if ($type_result) {
+    try {
+        // Lock the room_type row to prevent concurrent updates
+        $stmt = $conn->prepare("SELECT base_price FROM room_types WHERE room_type_id = ? FOR UPDATE");
+        $stmt->bind_param("i", $room_type_id);
+        $stmt->execute();
+        $type = $stmt->get_result()->fetch_assoc();
+
+        if (!$type) throw new Exception("invalid_type");
+
+        // Availability check inside the lock
         $avail_stmt = $conn->prepare("
             SELECT 
                 (SELECT COUNT(*) FROM rooms WHERE room_type_id = ?) - 
@@ -37,36 +42,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         ");
         $avail_stmt->bind_param("iiss", $room_type_id, $room_type_id, $check_out, $check_in);
         $avail_stmt->execute();
-        $avail_result = $avail_stmt->get_result()->fetch_assoc();
-        $avail_stmt->close();
+        $free = $avail_stmt->get_result()->fetch_assoc()['free_rooms'];
 
-        if ($avail_result['free_rooms'] <= 0) {
-            header("Location: ../client/clientbook.php?error=unavailable");
-            exit();
-        }
+        if ($free <= 0) throw new Exception("unavailable");
 
-        $base_price = $type_result['base_price'];
+        $nights = max(1, (new DateTime($check_in))->diff(new DateTime($check_out))->days);
+        $total = $type['base_price'] * $nights;
 
-        // FIX: Daylight Saving Time safe calculation
-        $d_start = new DateTime($check_in);
-        $d_end = new DateTime($check_out);
-        $nights = max(1, $d_start->diff($d_end)->days);
-        
-        $total_price = $base_price * $nights;
+        $insert = $conn->prepare("INSERT INTO bookings (room_type_id, customer_id, check_in_date, check_out_date, price, booking_status) VALUES (?, ?, ?, ?, ?, 'booked')");
+        $insert->bind_param("iissd", $room_type_id, $customer_id, $check_in, $check_out, $total);
+        $insert->execute();
 
-        $sql = "INSERT INTO bookings (room_type_id, customer_id, check_in_date, check_out_date, price, booking_status) 
-                VALUES (?, ?, ?, ?, ?, 'booked')";
-        $insert = $conn->prepare($sql);
-        $insert->bind_param("iissd", $room_type_id, $customer_id, $check_in, $check_out, $total_price);
-        
-        if ($insert->execute()) {
-            header("Location: ../client/clientdashboard.php?booked=1");
-        } else {
-            header("Location: ../client/clientbook.php?error=db");
-        }
-        $insert->close();
-    } else {
-        header("Location: ../client/clientbook.php?error=invalid_type");
+        $conn->commit();
+        header("Location: ../client/clientdashboard.php?booked=1");
+    } catch (Exception $e) {
+        $conn->rollback();
+        header("Location: ../client/clientbook.php?error=" . $e->getMessage());
     }
 }
-?>

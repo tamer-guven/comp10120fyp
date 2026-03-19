@@ -4,7 +4,7 @@ require_once '../database/db.php';
 
 // Only allow logged-in managers
 if (!isset($_SESSION['staff_id']) || ($_SESSION['role'] ?? '') !== 'manager') {
-    header("Location: stafflogin.php");
+    header("Location: ../login.php");
     exit();
 }
 
@@ -313,7 +313,7 @@ $rooms = $conn->query("SELECT r.room_id, r.room_number, rt.type AS room_type FRO
 
     <script>
         function handleLogout() {
-            window.location.href = 'stafflogin.php';
+            window.location.href = '../login.php';
         }
     </script>
 </body>

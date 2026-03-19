@@ -4,7 +4,7 @@ require_once '../database/db.php';
 
 // Only allow logged-in managers
 if (!isset($_SESSION['staff_id']) || (strtolower($_SESSION['role'] ?? '') !== 'manager')) {
-    header("Location: stafflogin.php");
+    header("Location: ../login.php");
     exit();
 }
 
@@ -64,7 +64,7 @@ $cleaners = $conn->query($cleaner_sql)->fetch_all(MYSQLI_ASSOC);
                 <button class="px-4 py-2 text-gray-700 rounded-lg hover:text-amber-600 transition duration-150 font-medium" onclick="window.location.href='admin_dashboard.php'">
                     Dashboard
                 </button>
-                <button id="logoutBtn" class="px-5 py-2 bg-gray-800 text-white rounded-lg shadow-md hover:bg-gray-900 transition duration-150 font-medium" onclick="window.location.href='stafflogin.php'">
+                <button id="logoutBtn" class="px-5 py-2 bg-gray-800 text-white rounded-lg shadow-md hover:bg-gray-900 transition duration-150 font-medium" onclick="window.location.href='../login.php'">
                     Log Out
                 </button>
             </nav>
