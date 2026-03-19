@@ -30,15 +30,38 @@ $room_types = $conn->query("SELECT * FROM room_types");
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-semibold text-gray-700">Check-in</label>
-                    <input type="date" name="check_in" required class="w-full p-3 border rounded-lg">
+                    <input type="date" id="check_in" name="check_in" required class="w-full p-3 border rounded-lg">
                 </div>
                 <div>
                     <label class="block text-sm font-semibold text-gray-700">Check-out</label>
-                    <input type="date" name="check_out" required class="w-full p-3 border rounded-lg">
+                    <input type="date" id="check_out" name="check_out" required class="w-full p-3 border rounded-lg">
                 </div>
             </div>
             <button type="submit" class="w-full bg-amber-500 py-3 font-bold text-gray-900 rounded-lg hover:bg-amber-600 transition">Confirm Booking</button>
         </form>
     </div>
+
+    <script>
+        const checkIn = document.getElementById('check_in');
+        const checkOut = document.getElementById('check_out');
+        
+        // Prevent booking in the past
+        const today = new Date().toISOString().split('T')[0];
+        checkIn.min = today;
+        
+        // Ensure check-out is at least 1 day after check-in
+        checkIn.addEventListener('change', function() {
+            if (this.value) {
+                const minCheckOut = new Date(this.value);
+                minCheckOut.setDate(minCheckOut.getDate() + 1);
+                checkOut.min = minCheckOut.toISOString().split('T')[0];
+                
+                // Reset checkout if invalid
+                if (checkOut.value && checkOut.value <= this.value) {
+                    checkOut.value = '';
+                }
+            }
+        });
+    </script>
 </body>
 </html>
