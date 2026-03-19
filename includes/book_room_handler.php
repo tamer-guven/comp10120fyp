@@ -17,7 +17,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Server-side Date Validation
     $today = date('Y-m-d');
     if ($check_in < $today || $check_out <= $check_in) {
-        die("Invalid dates selected. Please go back and try again.");
+        header("Location: ../client/clientbook.php?error=dates");
+        exit();
     }
 
     // 1. Check that this room type exists and calculate prices
@@ -44,7 +45,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $avail_stmt->close();
 
         if ($avail_result['free_rooms'] <= 0) {
-            die("Sorry, there are no available rooms of this type for the selected dates. Please go back and select a different room or date.");
+            header("Location: ../client/clientbook.php?error=unavailable");
+            exit();
         }
 
         $base_price = $type_result['base_price'];
@@ -62,11 +64,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if ($insert->execute()) {
             header("Location: ../client/clientdashboard.php?booked=1");
         } else {
-            echo "Booking Error: " . $conn->error;
+            header("Location: ../client/clientbook.php?error=db");
         }
         $insert->close();
     } else {
-        echo "Invalid room type selected.";
+        header("Location: ../client/clientbook.php?error=invalid_type");
     }
 }
 ?>
