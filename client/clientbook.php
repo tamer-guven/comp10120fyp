@@ -85,12 +85,12 @@ if (isset($_GET['error'])) {
         </form>
     </div>
 
-    <script>
+<script>
         const checkIn = document.getElementById('check_in');
         const checkOut = document.getElementById('check_out');
         
-        // Prevent booking in the past
-        const today = new Date().toISOString().split('T')[0];
+        // Prevent booking in the past using server-side date calculation to avoid Timezone bugs
+        const today = '<?php echo date("Y-m-d"); ?>';
         checkIn.min = today;
         
         // Ensure check-out is at least 1 day after check-in
