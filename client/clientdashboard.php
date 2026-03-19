@@ -22,7 +22,7 @@ $first_name = $customer_data ? $customer_data['first_name'] : '';
 $customer_stmt->close();
 
 // Fetch the current (active) booking for this customer
-$stmt = $conn->prepare("SELECT b.booking_id, b.check_in_date, b.check_out_date, b.booking_status, b.actual_check_in, b.room_id, r.room_number, rt.type FROM bookings b LEFT JOIN rooms r ON b.room_id = r.room_id JOIN room_types rt ON b.room_type_id = rt.room_type_id WHERE b.customer_id = ? AND b.booking_status IN ('booked','checked_in') ORDER BY b.check_in_date DESC LIMIT 1");
+$stmt = $conn->prepare("SELECT b.booking_id, b.check_in_date, b.check_out_date, b.booking_status, b.actual_check_in, b.room_id, r.room_number, rt.type FROM bookings b LEFT JOIN rooms r ON b.room_id = r.room_id JOIN room_types rt ON b.room_type_id = rt.room_type_id WHERE b.customer_id = ? AND b.booking_status IN ('booked','checked_in') ORDER BY b.check_in_date ASC LIMIT 1");
     
 $stmt->bind_param("i", $customer_id);
 $stmt->execute();
