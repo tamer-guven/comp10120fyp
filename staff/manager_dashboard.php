@@ -142,7 +142,7 @@ $rooms = $conn->query("SELECT r.room_id, r.room_number, rt.type AS room_type FRO
                     Cleaning Overview
                 </button>
                 <button class="px-4 py-2 text-gray-700 rounded-lg hover:text-amber-600 transition duration-150 font-medium" onclick="window.location.href='admin_dashboard.php'">
-                    Admin Dashboard
+                    Dashboard
                 </button>
                 <button id="logoutBtn" class="px-5 py-2 bg-gray-800 text-white rounded-lg shadow-md hover:bg-gray-900 transition duration-150 font-medium" onclick="handleLogout()">
                     Log Out
@@ -182,7 +182,7 @@ $rooms = $conn->query("SELECT r.room_id, r.room_number, rt.type AS room_type FRO
                     <select name="role" class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-amber-500 focus:border-amber-500" required>
                         <option value="">Select role</option>
                         <option value="manager">Manager</option>
-                        <option value="admin">Admin</option>
+                        <option value="receptionist">Receptionist</option>
                         <option value="cleaner">Cleaner</option>
                     </select>
                     <div class="md:col-span-2">

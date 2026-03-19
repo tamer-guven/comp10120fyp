@@ -12,6 +12,9 @@ $staff_id = $_SESSION['staff_id'];
 $first_name = $_SESSION['first_name'] ?? 'Staff';
 $conn->select_db("hotel_management_db");
 
+// Ensure completed_at column exists (idempotent on MySQL 8+)
+$conn->query("ALTER TABLE housekeeping_requests ADD COLUMN IF NOT EXISTS completed_at DATETIME NULL");
+
 // Handle status updates
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['request_id'])) {
     $action = $_POST['action'];
@@ -26,8 +29,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['req
 
     if ($new_status) {
         // Update the task status
-        $stmt = $conn->prepare("UPDATE housekeeping_requests SET status = ? WHERE request_id = ? AND staff_id = ?");
-        $stmt->bind_param("sii", $new_status, $request_id, $staff_id);
+    $stmt = $conn->prepare("UPDATE housekeeping_requests SET status = ?, completed_at = CASE WHEN ? = 'completed' THEN NOW() ELSE completed_at END WHERE request_id = ? AND staff_id = ?");
+    $stmt->bind_param("ssii", $new_status, $new_status, $request_id, $staff_id);
         $stmt->execute();
         $stmt->close();
         
@@ -58,12 +61,12 @@ $stmt->execute();
 $tasks = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-// Fetch tasks completed today
+// Fetch tasks completed today (based on completion timestamp; fallback to scheduled date if completion timestamp missing)
 $sql_completed = "SELECT h.*, r.room_number 
-        FROM housekeeping_requests h 
-        JOIN rooms r ON h.room_id = r.room_id 
-        WHERE h.staff_id = ? AND h.status = 'completed' AND DATE(h.scheduled_datetime) = CURDATE()
-        ORDER BY h.scheduled_datetime DESC";
+    FROM housekeeping_requests h 
+    JOIN rooms r ON h.room_id = r.room_id 
+    WHERE h.staff_id = ? AND h.status = 'completed' AND DATE(COALESCE(h.completed_at, h.scheduled_datetime)) = CURDATE()
+    ORDER BY COALESCE(h.completed_at, h.scheduled_datetime) DESC";
 $stmt_comp = $conn->prepare($sql_completed);
 $stmt_comp->bind_param("i", $staff_id);
 $stmt_comp->execute();

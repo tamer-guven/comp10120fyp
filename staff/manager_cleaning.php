@@ -59,10 +59,10 @@ $cleaners = $conn->query($cleaner_sql)->fetch_all(MYSQLI_ASSOC);
             <h1 class="text-3xl font-extrabold text-gray-900 tracking-wider">The <span class="text-amber-500">Bee</span> Hotel <span class="text-sm text-gray-600 font-normal">Manager</span></h1>
             <nav class="space-x-4 flex items-center">
                 <button class="px-4 py-2 text-gray-700 rounded-lg hover:text-amber-600 transition duration-150 font-medium" onclick="window.location.href='manager_dashboard.php'">
-                    Manager Dashboard
+                    Manager Panel
                 </button>
                 <button class="px-4 py-2 text-gray-700 rounded-lg hover:text-amber-600 transition duration-150 font-medium" onclick="window.location.href='admin_dashboard.php'">
-                    Admin Dashboard
+                    Dashboard
                 </button>
                 <button id="logoutBtn" class="px-5 py-2 bg-gray-800 text-white rounded-lg shadow-md hover:bg-gray-900 transition duration-150 font-medium" onclick="window.location.href='stafflogin.php'">
                     Log Out

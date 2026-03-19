@@ -238,10 +238,8 @@ $services = $services_result->fetch_all(MYSQLI_ASSOC);
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Request Type</label>
                     <select name="request_type" required class="w-full px-4 py-3 border border-gray-300 rounded-lg">
                         <option value="">-- Select request type --</option>
-                        <option value="cleaning">Room Cleaning</option>
-                        <option value="linens">Linens & Towels</option>
-                        <option value="maintenance">Maintenance</option>
-                        <option value="other">Other</option>
+                        <option value="Full Cleaning">Full Cleaning (30-45 mins)</option>
+                        <option value="Towel & Amenity Refresh">Towel & Amenity Refresh (5 mins)</option>
                     </select>
                 </div>
                 <div class="mb-4">
@@ -459,7 +457,7 @@ $services = $services_result->fetch_all(MYSQLI_ASSOC);
             formData.append('request_type', requestType);
             formData.append('notes', notes);
 
-            fetch('../includes/staff_housekeeping.php', {
+            fetch('../includes/admin_housekeeping.php', {
                 method: 'POST',
                 body: formData
             })
