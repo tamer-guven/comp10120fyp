@@ -2,7 +2,6 @@
 session_start();
 require_once '../database/db.php';
 
-// Redirect to login if not logged in
 if (!isset($_SESSION['user_id'])) {
     header("Location: ../login.php");
     exit();
@@ -14,14 +13,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $check_in = $_POST['check_in'];
     $check_out = $_POST['check_out'];
 
-    // Server-side Date Validation
     $today = date('Y-m-d');
     if ($check_in < $today || $check_out <= $check_in) {
         header("Location: ../client/clientbook.php?error=dates");
         exit();
     }
 
-    // 1. Check that this room type exists and calculate prices
     $stmt = $conn->prepare("SELECT base_price FROM room_types WHERE room_type_id = ?");
     $stmt->bind_param("i", $room_type_id);
     $stmt->execute();
@@ -29,7 +26,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $stmt->close();
 
     if ($type_result) {
-        // 2. Prevent Infinite Bookings (Check Availability before booking)
         $avail_stmt = $conn->prepare("
             SELECT 
                 (SELECT COUNT(*) FROM rooms WHERE room_type_id = ?) - 
@@ -51,11 +47,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         $base_price = $type_result['base_price'];
 
-        // Calculate number of nights
-        $nights = max(1, (strtotime($check_out) - strtotime($check_in)) / 86400);
+        // FIX: Daylight Saving Time safe calculation
+        $d_start = new DateTime($check_in);
+        $d_end = new DateTime($check_out);
+        $nights = max(1, $d_start->diff($d_end)->days);
+        
         $total_price = $base_price * $nights;
 
-        // 3. Insert into bookings table (room_id defaults to NULL dynamically)
         $sql = "INSERT INTO bookings (room_type_id, customer_id, check_in_date, check_out_date, price, booking_status) 
                 VALUES (?, ?, ?, ?, ?, 'booked')";
         $insert = $conn->prepare($sql);
