@@ -166,6 +166,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
+// Fetch customer first name
+$customer_stmt = $conn->prepare("SELECT first_name FROM customers WHERE customer_id = ? LIMIT 1");
+$customer_stmt->bind_param("i", $customer_id);
+$customer_stmt->execute();
+$customer_result = $customer_stmt->get_result();
+$customer_data = $customer_result->fetch_assoc();
+$first_name = $customer_data ? $customer_data['first_name'] : '';
+$customer_stmt->close();
+
 // Fetch the current/latest booking for this customer
 $stmt = $conn->prepare("SELECT b.booking_id, b.check_in_date, b.check_out_date, b.booking_status, b.actual_check_in, b.room_id, r.room_number, rt.type FROM bookings b LEFT JOIN rooms r ON b.room_id = r.room_id JOIN room_types rt ON b.room_type_id = rt.room_type_id WHERE b.customer_id = ? ORDER BY b.check_in_date DESC LIMIT 1");
     
@@ -246,9 +255,10 @@ if ($current_booking && $current_booking['booking_status'] === 'checked_in'){
         <p class="text-gray-600 text-lg mb-8">Manage your current stay and review past bookings below.</p>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            
+            <!-- Left Column: Your Current Stay -->
+            <div class="lg:col-span-2">
             <?php if ($current_booking): ?>
-                <div class="lg:col-span-2 bg-white p-6 md:p-8 rounded-2xl shadow-xl border-t-4 border-amber-500 space-y-4">
+                <div class="bg-white p-6 md:p-8 rounded-2xl shadow-xl border-t-4 border-amber-500 space-y-4">
                     <h3 class="text-3xl font-extrabold text-gray-900">Your Current Stay</h3>
                     
                     <div class="grid grid-cols-2 gap-4 text-gray-700">
@@ -319,7 +329,7 @@ if ($current_booking && $current_booking['booking_status'] === 'checked_in'){
                 </div>
             </div>
             <?php else: ?>
-                <div class="lg:col-span-2 bg-white p-12 rounded-2xl shadow-xl border-t-4 border-amber-500 text-center">
+                <div class="bg-white p-12 rounded-2xl shadow-xl border-t-4 border-amber-500 text-center">
                     <div class="mb-6">
                         <svg class="mx-auto h-24 w-24 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -332,6 +342,7 @@ if ($current_booking && $current_booking['booking_status'] === 'checked_in'){
                     </a>
                 </div>
             <?php endif; ?>
+            </div>
 
             
             <div class="bg-gray-800 p-6 md:p-8 rounded-2xl shadow-xl space-y-4 text-white">
@@ -341,11 +352,18 @@ if ($current_booking && $current_booking['booking_status'] === 'checked_in'){
                         <p class="text-sm text-gray-400 mb-4">Past stay history will appear here once your current visit is completed.</p>
                     <?php else: ?>
                         <?php foreach ($past_bookings as $booking): ?>
+                            <?php 
+                                $activities = isset($booking['activity_total']) ? (float)$booking['activity_total'] : 0;
+                                $total_due = (float)$booking['price'] + $activities;
+                            ?>
                             <div class="border-b border-gray-700 pb-3 mb-3">
                                 <p class="font-bold">Booking #BEE<?php echo $booking['booking_id']; ?></p>
                                 <p class="text-sm text-gray-400"><?php echo date('M j, Y', strtotime($booking['check_in_date'])); ?> - <?php echo date('M j, Y', strtotime($booking['check_out_date'])); ?></p>
                                 <p class="text-sm text-gray-400"><?php echo htmlspecialchars($booking['type']); ?><?php echo ($booking['room_id'] > 0) ? ' (Room ' . htmlspecialchars($booking['room_number']) . ')' : ''; ?></p>
-                                <p class="text-sm text-amber-500 pt-1">Total: £<?php echo number_format($booking['price'], 2); ?></p>
+                                <p class="text-sm text-amber-500 pt-1">Total: £<?php echo number_format($total_due, 2); ?></p>
+                                <?php if ($activities > 0): ?>
+                                    <p class="text-xs text-gray-400">Includes activities: £<?php echo number_format($activities, 2); ?></p>
+                                <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
                     <?php endif; ?>

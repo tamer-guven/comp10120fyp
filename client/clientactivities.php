@@ -55,7 +55,14 @@ $activities = $conn->query("SELECT * FROM services WHERE is_available = 1 ORDER 
                     <div class="bg-white p-6 rounded-2xl shadow-xl border-t-4 border-amber-500 flex flex-col justify-between">
                         <div>
                             <span class="text-sm font-semibold text-amber-600 uppercase">Activity</span>
-                            <h3 class="text-2xl font-bold text-gray-900 mt-1 mb-3"><?php echo htmlspecialchars($activity['name']); ?></h3>
+                            <h3 class="text-2xl font-bold text-gray-900 mt-1 mb-2"><?php echo htmlspecialchars($activity['name']); ?></h3>
+                            <?php if (!empty($activity['description'])): ?>
+                                <p class="text-gray-600 text-sm mb-3 leading-relaxed"><?php echo nl2br(htmlspecialchars($activity['description'])); ?></p>
+                            <?php endif; ?>
+                            <div class="text-sm text-gray-700 space-y-1">
+                                <div><span class="font-semibold">Date:</span> <?php echo $activity['activity_date'] ? date('d/m/Y', strtotime($activity['activity_date'])) : 'TBA'; ?></div>
+                                <div><span class="font-semibold">Time:</span> <?php echo $activity['activity_time'] ? date('H:i', strtotime($activity['activity_time'])) : 'TBA'; ?></div>
+                            </div>
                         </div>
                         <div class="flex justify-between items-center pt-4 border-t">
                             <span class="text-xl font-extrabold text-gray-800">£<?php echo number_format($activity['cost'], 2); ?></span>

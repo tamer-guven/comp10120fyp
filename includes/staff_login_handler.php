@@ -24,6 +24,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             // Route based on role
             if ($user['role'] === 'admin') {
                 header("Location: ../staff/admin_dashboard.php");
+            } elseif ($user['role'] === 'manager') {
+                header("Location: ../staff/manager_dashboard.php");
             } elseif ($user['role'] === 'cleaner') {
                 header("Location: ../staff/housekeeping_dashboard.php");
             } else {

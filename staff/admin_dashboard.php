@@ -71,6 +71,11 @@ $services = $services_result->fetch_all(MYSQLI_ASSOC);
                 <button class="px-4 py-2 text-gray-700 rounded-lg hover:text-amber-600 transition duration-150 font-medium" onclick="window.location.href='expenses.php'">
                     Expenses & Billing
                 </button>
+                <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'manager'): ?>
+                <button class="px-4 py-2 text-gray-700 rounded-lg hover:text-amber-600 transition duration-150 font-medium" onclick="window.location.href='manager_dashboard.php'">
+                    Manager Panel
+                </button>
+                <?php endif; ?>
                 <button id="logoutBtn" class="px-5 py-2 bg-gray-800 text-white rounded-lg shadow-md hover:bg-gray-900 transition duration-150 font-medium" onclick="handleLogout()">
                     Log Out
                 </button>
@@ -156,7 +161,7 @@ $services = $services_result->fetch_all(MYSQLI_ASSOC);
                                 ?>
                             </td>
                             <td class="px-6 py-4 font-semibold text-gray-900">
-                                <?php echo $row['price'] ? '$' . number_format($row['price'], 2) : '-'; ?>
+                                <?php echo $row['price'] ? '£' . number_format($row['price'], 2) : '-'; ?>
                             </td>
                             <td class="px-6 py-4 text-center">
                                 <div class="flex gap-2 justify-center items-center flex-wrap">
@@ -209,7 +214,7 @@ $services = $services_result->fetch_all(MYSQLI_ASSOC);
                         <option value="">-- Select an activity --</option>
                         <?php foreach ($services as $service): ?>
                         <option value="<?php echo $service['service_id']; ?>">
-                            <?php echo htmlspecialchars($service['name']) . ' ($' . number_format($service['cost'], 2) . ')'; ?>
+                            <?php echo htmlspecialchars($service['name']) . ' (£' . number_format($service['cost'], 2) . ')'; ?>
                         </option>
                         <?php endforeach; ?>
                     </select>

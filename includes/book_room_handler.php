@@ -2,7 +2,13 @@
 session_start();
 require_once '../database/db.php';
 
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_SESSION['user_id'])) {
+// Redirect to login if not logged in
+if (!isset($_SESSION['user_id'])) {
+    header("Location: clientlogin.php");
+    exit();
+}
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $customer_id = $_SESSION['user_id'];
     $room_type_id = $_POST['room_type_id'];
     $check_in = $_POST['check_in'];
