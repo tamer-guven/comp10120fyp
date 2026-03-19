@@ -43,30 +43,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'delete_staff') {
         $staff_id = (int)($_POST['staff_id'] ?? 0);
         if ($staff_id > 0) {
-            $stmt = $conn->prepare("DELETE FROM staff WHERE staff_id = ?");
-            $stmt->bind_param('i', $staff_id);
-            $stmt->execute();
-            $stmt->close();
-            $flash = 'Staff member removed.';
-        }
-    }
-
-    // Add room type
-    if ($action === 'add_room_type') {
-        $type = trim($_POST['type'] ?? '');
-        $price = $_POST['base_price'] ?? '';
-        $max_guests = (int)($_POST['max_guests'] ?? 0);
-        if ($type && is_numeric($price) && $max_guests > 0) {
-            $stmt = $conn->prepare("INSERT INTO room_types (type, base_price, max_guests) VALUES (?, ?, ?)");
-            $stmt->bind_param('sdi', $type, $price, $max_guests);
-            if ($stmt->execute()) {
-                $flash = 'Room type added.';
-            } else {
-                $flash = 'Error adding room type: ' . $conn->error;
+            try {
+                $stmt = $conn->prepare("DELETE FROM staff WHERE staff_id = ?");
+                $stmt->bind_param('i', $staff_id);
+                $stmt->execute();
+                $stmt->close();
+                $flash = 'Staff member removed.';
+            } catch (mysqli_sql_exception $e) {
+                $flash = 'Cannot remove: Staff member has assigned tasks or history.';
             }
-            $stmt->close();
-        } else {
-            $flash = 'Please provide room type, price, and max guests.';
         }
     }
 
@@ -74,11 +59,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'delete_room_type') {
         $room_type_id = (int)($_POST['room_type_id'] ?? 0);
         if ($room_type_id > 0) {
-            $stmt = $conn->prepare("DELETE FROM room_types WHERE room_type_id = ?");
-            $stmt->bind_param('i', $room_type_id);
-            $stmt->execute();
-            $stmt->close();
-            $flash = 'Room type removed (ensure no rooms depend on it).';
+            try {
+                $stmt = $conn->prepare("DELETE FROM room_types WHERE room_type_id = ?");
+                $stmt->bind_param('i', $room_type_id);
+                $stmt->execute();
+                $stmt->close();
+                $flash = 'Room type removed.';
+            } catch (mysqli_sql_exception $e) {
+                $flash = 'Cannot remove: There are active rooms using this room type.';
+            }
+        }
+    }
+
+    // Delete room
+    if ($action === 'delete_room') {
+        $room_id = (int)($_POST['room_id'] ?? 0);
+        if ($room_id > 0) {
+            try {
+                $stmt = $conn->prepare("DELETE FROM rooms WHERE room_id = ?");
+                $stmt->bind_param('i', $room_id);
+                $stmt->execute();
+                $stmt->close();
+                $flash = 'Room removed.';
+            } catch (mysqli_sql_exception $e) {
+                $flash = 'Cannot remove: Room has active bookings or housekeeping history.';
+            }
         }
     }
 
