@@ -2,6 +2,7 @@
 header('Content-Type: application/json');
 session_start();
 require_once '../database/db.php';
+require_once 'housekeeping_scheduler.php';
 
 $conn->select_db("hotel_management_db");
 
@@ -94,10 +95,17 @@ elseif ($action === 'check_out') {
         exit;
     }
 
+    $room_id = $booking['room_id'];
     $update = $conn->prepare("UPDATE bookings SET booking_status = 'checked_out' WHERE booking_id = ?");
     $update->bind_param("i", $booking_id);
 
     if ($update->execute()) {
+        // Trigger housekeeping assignment upon checkout
+        if (!empty($room_id)) {
+            ob_start();
+            handle_checkout_hk($room_id);
+            ob_end_clean();
+        }
         echo json_encode(['success' => true, 'message' => 'Checked out successfully. Thank you for your stay!']);
     } else {
         echo json_encode(['success' => false, 'message' => 'Database error: ' . $conn->error]);

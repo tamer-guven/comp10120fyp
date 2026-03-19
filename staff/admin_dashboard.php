@@ -60,7 +60,6 @@ $services = $services_result->fetch_all(MYSQLI_ASSOC);
 </head>
 <body class="bg-gray-50 min-h-screen">
 
-    <!-- Header & Navigation -->
     <header class="bg-white shadow-lg sticky top-0 z-10">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             <h1 class="text-3xl font-extrabold text-gray-900 tracking-wider">The <span class="text-amber-500">Bee</span> Hotel <span class="text-sm text-gray-600 font-normal">Admin</span></h1>
@@ -80,12 +79,10 @@ $services = $services_result->fetch_all(MYSQLI_ASSOC);
         </div>
     </header>
 
-    <!-- Main Content -->
     <main class="w-full py-10 px-4 sm:px-6 lg:px-8">
         <h2 class="text-4xl font-bold text-gray-900 mb-2">Admin Dashboard</h2>
         <p class="text-gray-600 text-lg mb-8">Manage customers, bookings, and services</p>
 
-        <!-- Search & Filter Section -->
         <div class="bg-white p-6 rounded-2xl shadow-lg mb-8 border-t-4 border-amber-500">
             <h3 class="text-2xl font-bold text-gray-900 mb-4">Search Customers</h3>
             <form method="GET" class="flex gap-4">
@@ -100,7 +97,6 @@ $services = $services_result->fetch_all(MYSQLI_ASSOC);
             </form>
         </div>
 
-        <!-- Customers & Bookings Table -->
         <div class="bg-white rounded-2xl shadow-lg overflow-hidden border-t-4 border-amber-500">
             <div class="overflow-x-auto">
                 <table class="w-full">
@@ -199,7 +195,6 @@ $services = $services_result->fetch_all(MYSQLI_ASSOC);
         </div>
     </main>
 
-    <!-- Book Activity Modal -->
     <div id="bookActivityModal" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-50 hidden" onclick="closeBookActivityModal()">
         <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full m-4 border-t-8 border-amber-500" onclick="event.stopPropagation()">
             <h3 class="text-2xl font-bold text-gray-900 mb-4">Book Activity for <span id="modalCustomerName"></span></h3>
@@ -228,7 +223,6 @@ $services = $services_result->fetch_all(MYSQLI_ASSOC);
         </div>
     </div>
 
-    <!-- Housekeeping Modal -->
     <div id="housekeepingModal" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-50 hidden" onclick="closeHousekeepingModal()">
         <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full m-4 border-t-8 border-blue-500" onclick="event.stopPropagation()">
             <h3 class="text-2xl font-bold text-gray-900 mb-4">Request Housekeeping for <span id="housekeepingCustomerName"></span></h3>
@@ -258,7 +252,6 @@ $services = $services_result->fetch_all(MYSQLI_ASSOC);
         </div>
     </div>
 
-    <!-- Check-in Modal -->
     <div id="checkinModal" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-50 hidden" onclick="closeCheckinModal()">
         <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full m-4 border-t-8 border-green-500" onclick="event.stopPropagation()">
             <h3 class="text-2xl font-bold text-gray-900 mb-4">Check In Guest</h3>
@@ -274,7 +267,6 @@ $services = $services_result->fetch_all(MYSQLI_ASSOC);
         </div>
     </div>
 
-    <!-- Check-out Modal -->
     <div id="checkoutModal" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-50 hidden" onclick="closeCheckoutModal()">
         <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full m-4 border-t-8 border-red-500" onclick="event.stopPropagation()">
             <h3 class="text-2xl font-bold text-gray-900 mb-4">Check Out Guest</h3>
@@ -290,7 +282,6 @@ $services = $services_result->fetch_all(MYSQLI_ASSOC);
         </div>
     </div>
 
-    <!-- Success Modal -->
     <div id="successModal" class="fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-50 hidden" onclick="closeSuccessModal()">
         <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full m-4 border-t-8 border-green-500" onclick="event.stopPropagation()">
             <svg class="w-16 h-16 text-green-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -346,12 +337,12 @@ $services = $services_result->fetch_all(MYSQLI_ASSOC);
             formData.append('action', 'checkin');
 
             try {
-                const res = await fetch('admin_checkin.php', { method: 'POST', body: formData });
+                // UPDATE: Changed fetch path to the new handler in includes
+                const res = await fetch('../includes/admin_checkin_handler.php', { method: 'POST', body: formData });
                 const data = await res.json();
 
                 if (res.ok && data.success) {
                     closeCheckinModal();
-                    // Display success message with room assignment if available
                     if (data.room_number) {
                         document.getElementById('successMessage').textContent = 'Guest checked in successfully! Room assigned: #' + data.room_number;
                     } else {
@@ -377,7 +368,8 @@ $services = $services_result->fetch_all(MYSQLI_ASSOC);
             formData.append('action', 'checkout');
 
             try {
-                const res = await fetch('admin_checkin.php', { method: 'POST', body: formData });
+                // UPDATE: Changed fetch path to the new handler in includes
+                const res = await fetch('../includes/admin_checkin_handler.php', { method: 'POST', body: formData });
                 const data = await res.json();
 
                 if (res.ok && data.success) {
