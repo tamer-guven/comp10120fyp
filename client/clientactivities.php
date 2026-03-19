@@ -105,7 +105,7 @@ $activities = $conn->query("SELECT * FROM services WHERE is_available = 1 ORDER 
         }
 
         function handleLogout() {
-            goToPage('clientlogin.html');
+            goToPage('../login.php');
         }
 
         // 1. Show the central modal with animation

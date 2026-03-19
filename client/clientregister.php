@@ -104,7 +104,7 @@ if (isset($_GET['success'])) {
 
         <p class="text-center text-sm text-gray-500 mt-6">
             Already have an account?
-            <a href="clientlogin.php" class="text-amber-600 hover:text-amber-800 font-medium">Log In</a>
+            <a href="../login.php" class="text-amber-600 hover:text-amber-800 font-medium">Log In</a>
         </p>
     </div>
 

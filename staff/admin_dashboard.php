@@ -4,7 +4,7 @@ require_once '../database/db.php';
 
 // Redirect to login if not logged in
 if (!isset($_SESSION['staff_id'])) {
-    header("Location: stafflogin.php");
+    header("Location: ../login.php");
     exit();
 }
 
@@ -309,7 +309,7 @@ $services = $services_result->fetch_all(MYSQLI_ASSOC);
         let pendingCheckOut = null;
 
         function handleLogout() {
-            window.location.href = 'stafflogin.php';
+            window.location.href = '../login.php';
         }
 
         function handleCheckIn(bookingId, customerName) {

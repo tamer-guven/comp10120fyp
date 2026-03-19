@@ -41,7 +41,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     try {
         if ($stmt->execute()) {
-            header("Location: ../client/clientlogin.php?success=1"); //
+            header("Location: ../login.php?success=1");
             exit();
         }
     } catch (mysqli_sql_exception $e) {

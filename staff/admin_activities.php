@@ -4,7 +4,7 @@ require_once '../database/db.php';
 
 // Redirect to login if not logged in
 if (!isset($_SESSION['staff_id'])) {
-    header("Location: stafflogin.php");
+    header("Location: ../login.php");
     exit();
 }
 
@@ -118,7 +118,7 @@ $activities = $conn->query("SELECT * FROM services ORDER BY service_id DESC");
                 <button class="px-4 py-2 text-gray-700 rounded-lg hover:text-amber-600 transition duration-150 font-medium" onclick="window.location.href='expenses.php'">
                     Expenses & Billing
                 </button>
-                <button id="logoutBtn" class="px-5 py-2 bg-gray-800 text-white rounded-lg shadow-md hover:bg-gray-900 transition duration-150 font-medium" onclick="window.location.href='stafflogin.php'">
+                <button id="logoutBtn" class="px-5 py-2 bg-gray-800 text-white rounded-lg shadow-md hover:bg-gray-900 transition duration-150 font-medium" onclick="window.location.href='../login.php'">
                     Log Out
                 </button>
             </nav>
