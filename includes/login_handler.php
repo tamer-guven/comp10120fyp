@@ -21,10 +21,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             header("Location: ../client/clientdashboard.php");
             exit();
         } else {
-            header("Location: ../client/clientlogin.php?error=invalid_password");
+            header("Location: ../login.php?error=invalid_password");
         }
     } else {
-        header("Location: ../client/clientlogin.php?error=no_user");
+        header("Location: ../login.php?error=no_user");
     }
 }
 ?>

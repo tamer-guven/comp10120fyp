@@ -210,7 +210,7 @@ if ($filter === 'all' || $filter === 'services') {
 
     <script>
         function handleLogout() {
-            window.location.href = 'clientlogin.html';
+            window.location.href = '../login.php';
         }
     </script>
 </body>
