@@ -161,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Invalid action.']);
     }
-    
+
     $conn->close();
     exit;
 }
@@ -175,6 +175,38 @@ $result = $stmt->get_result();
 $current_booking = $result->fetch_assoc();
 
 $stmt->close();
+
+//Fetch any booked activites or housekeeping requests
+    $get_services = $conn->prepare("SELECT s.name FROM services s JOIN services_customers s_c ON s.service_id = s_c.service_id WHERE s_c.customer_id = ? ORDER BY s_c.services_customer_id ASC");
+
+    $get_services->bind_param("i", $customer_id);
+    $get_services->execute();
+    $result = $get_services->get_result();
+    $current_services = [];
+    while ($row = $result->fetch_assoc()) {
+        $current_services[] = $row;
+    }
+    $get_services->close();
+
+    $current_housekeeping = [];
+if ($current_booking && $current_booking['booking_status'] === 'checked_in'){
+    $get_housekeeping = $conn->prepare("
+        SELECT hk.service_type, hk.scheduled_datetime, hk.status
+        FROM housekeeping_requests hk
+        JOIN bookings b ON hk.room_id = b.room_id
+        WHERE b.customer_id = ?
+        ORDER BY hk.scheduled_datetime ASC
+    ");
+
+    $get_housekeeping->bind_param("i", $customer_id);
+    $get_housekeeping->execute();
+    $result = $get_housekeeping->get_result();
+
+    while ($row = $result->fetch_assoc()) {
+        $current_housekeeping[] = $row;
+    }
+    $get_housekeeping->close();
+    }
 
 ?>
 
@@ -210,7 +242,7 @@ $stmt->close();
     </header>
 
     <main class="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
-        <h2 class="text-4xl font-bold text-gray-900 mb-2">Welcome, <?php echo htmlspecialchars($first_name); ?>!</h2>
+        <h2 class="text-4xl font-bold text-gray-900 mb-2">Welcome, <?php echo $_SESSION['first_name']; ?>!</h2>
         <p class="text-gray-600 text-lg mb-8">Manage your current stay and review past bookings below.</p>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -239,7 +271,7 @@ $stmt->close();
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         
                         <!-- Dynamic Link: Housekeeping (First row, first button) -->
-                        <?php if ($current_booking && $current_booking['booking_status'] === 'checked_in'):?>
+                        <?php if ($current_booking['booking_status'] === 'checked_in'):?>
                             <button class="py-3 px-4 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition" 
                                 onclick="goToPage('clienthousekeeping.php?booking_id=<?php echo $current_booking['booking_id']; ?>')">
                                 Request Housekeeping
@@ -262,7 +294,30 @@ $stmt->close();
                             View Expenses
                         </button>
                     </div>
+
                 </div>
+
+                <div class="bg-gray-800 p-6 md:p-8 rounded-2xl shadow-xl space-y-4 text-white">
+                    <h3 class="text-2xl font-extrabold text-amber-500">Scheduled Activities</h3>
+                    <div class="scroll-container max-h-[200px] overflow-y-auto pr-2">
+                    <?php if (empty($current_services) && empty($current_housekeeping)): ?>
+                        <p class="text-sm text-gray-400 mb-4">No services currently booked.</p>
+                    <?php else: ?>
+                        <?php foreach ($current_services as $service): ?>
+                            <div class="border-b border-gray-700 pb-3 mb-3">
+                                <p class="font-bold"><?php echo $service['name']; ?></p>
+                            </div>
+                        <?php endforeach; ?>
+                        <?php foreach ($current_housekeeping as $hk): ?>
+                            <div class="border-b border-gray-700 pb-3 mb-3">
+                                <p class="font-bold">Housekeeping: <?php echo $hk['service_type']; ?></p>
+                                <p class="text-sm text-gray-400"><?php echo date('M j, Y', strtotime($hk['scheduled_datetime'])); ?></p>
+                                <p class="text-sm text-gray-400"><?php echo htmlspecialchars($hk['status']); ?></p>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </div>
+            </div>
             <?php else: ?>
                 <div class="lg:col-span-2 bg-white p-12 rounded-2xl shadow-xl border-t-4 border-amber-500 text-center">
                     <div class="mb-6">
@@ -278,6 +333,7 @@ $stmt->close();
                 </div>
             <?php endif; ?>
 
+            
             <div class="bg-gray-800 p-6 md:p-8 rounded-2xl shadow-xl space-y-4 text-white">
                 <h3 class="text-2xl font-extrabold text-amber-500">Account Overview</h3>
                 <div class="scroll-container max-h-[400px] overflow-y-auto pr-2">
