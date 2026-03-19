@@ -136,6 +136,7 @@ $sql = "CREATE TABLE IF NOT EXISTS housekeeping_requests(
   notes TEXT,
   status ENUM('scheduled','assigned','in_progress','completed','cancelled') NOT NULL DEFAULT 'scheduled',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  completed_at DATETIME DEFAULT NULL,
   CONSTRAINT fk_hk_cleaner
     FOREIGN KEY (staff_id) REFERENCES staff(staff_id)
     ON DELETE SET NULL
