@@ -104,18 +104,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $flash = 'Please provide room number and room type.';
         }
     }
-
-    // Delete room
-    if ($action === 'delete_room') {
-        $room_id = (int)($_POST['room_id'] ?? 0);
-        if ($room_id > 0) {
-            $stmt = $conn->prepare("DELETE FROM rooms WHERE room_id = ?");
-            $stmt->bind_param('i', $room_id);
-            $stmt->execute();
-            $stmt->close();
-            $flash = 'Room removed (ensure no bookings depend on it).';
-        }
-    }
 }
 
 // Fetch data for display

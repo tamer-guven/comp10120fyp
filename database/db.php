@@ -10,7 +10,7 @@ $dbname = "hotel_management_db";
 $conn = new mysqli($servername, $username, $password, $dbname);
 
 if ($conn->connect_error) {
-    // In production, log this internally and show a generic message to the user
+    // Log error internally and show generic message to user for security
     error_log("Connection Failed: " . $conn->connect_error);
     die("A system error occurred. Please try again later.");
 }
