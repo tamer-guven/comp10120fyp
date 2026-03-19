@@ -12,9 +12,6 @@ $staff_id = $_SESSION['staff_id'];
 $first_name = $_SESSION['first_name'] ?? 'Staff';
 $conn->select_db("hotel_management_db");
 
-// Ensure completed_at column exists (idempotent on MySQL 8+)
-$conn->query("ALTER TABLE housekeeping_requests ADD COLUMN IF NOT EXISTS completed_at DATETIME NULL");
-
 // Handle status updates
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'], $_POST['request_id'])) {
     $action = $_POST['action'];
