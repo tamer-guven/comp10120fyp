@@ -1,34 +1,22 @@
 <?php
-// ENABLE ERROR REPORTING - This turns off the generic 500 error 
-// and shows the actual PHP error message.
+// Enable error reporting for debugging
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 require_once 'db.php';
 
-// Check connection
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
-// Ensure the database exists before selecting
 if (!$conn->select_db("hotel_management_db")) {
-    die("Error: Database 'hotel_management_db' does not exist. Please run create_tables.php first.");
+    die("Error: Database 'hotel_management_db' does not exist. Run create_tables.php first.");
 }
 
-echo "Starting data insertion...<br>";
-
-// 1. Clear existing data safely
+// 1. Clear existing data safely by disabling foreign key checks
 $conn->query("SET FOREIGN_KEY_CHECKS = 0");
 $tables = ['services_customers', 'housekeeping_requests', 'bookings', 'rooms', 'room_types', 'staff', 'customers', 'services'];
 foreach ($tables as $table) {
-    if (!$conn->query("TRUNCATE TABLE $table")) {
-        echo "Warning: Could not truncate $table: " . $conn->error . "<br>";
-    }
+    $conn->query("TRUNCATE TABLE $table");
 }
 $conn->query("SET FOREIGN_KEY_CHECKS = 1");
-echo "Database cleared...<br>";
 
 // 2. Insert Room Types
 $conn->query("INSERT INTO room_types (type, base_price, max_guests) VALUES ('Single Standard', 50.00, 1)");
@@ -42,29 +30,47 @@ $conn->query("INSERT INTO rooms (room_number, room_type_id, last_cleaned) VALUES
 $conn->query("INSERT INTO rooms (room_number, room_type_id, last_cleaned) VALUES (102, $single_id, CURDATE())");
 $conn->query("INSERT INTO rooms (room_number, room_type_id, last_cleaned) VALUES (201, $deluxe_id, CURDATE())");
 
-// 4. Insert Staff
-$pass = password_hash('password123', PASSWORD_DEFAULT);
-$conn->query("INSERT INTO staff (first_name, last_name, role, phone_number, email, password_hash) VALUES ('Alice', 'Manager', 'manager', '0123456789', 'manager@beehotel.com', '$pass')");
-$conn->query("INSERT INTO staff (first_name, last_name, role, phone_number, email, password_hash) VALUES ('Bob', 'Cleaner', 'cleaner', '0987654321', 'cleaner@beehotel.com', '$pass')");
+// 4. Insert Staff (Password: password123)
+$staff_pass = password_hash('password123', PASSWORD_DEFAULT); 
+$conn->query("INSERT INTO staff (first_name, last_name, role, phone_number, email, password_hash) VALUES 
+    ('Admin', 'User', 'manager', '0161111222', 'admin@example.com', '$staff_pass')");
+$conn->query("INSERT INTO staff (first_name, last_name, role, phone_number, email, password_hash) VALUES 
+    ('Reception', 'Staff', 'receptionist', '0161333444', 'staff@example.com', '$staff_pass')");
+$conn->query("INSERT INTO staff (first_name, last_name, role, phone_number, email, password_hash) VALUES 
+    ('Charlie', 'Cleaner', 'cleaner', '0161555666', 'cleaner@example.com', '$staff_pass')");
 
-// 5. Insert Customers
-$conn->query("INSERT INTO customers (first_name, last_name, user_address, date_of_birth, phone_number, email, password_hash) VALUES ('John', 'Doe', '123 Bee Lane', '1990-01-01', '07712345678', 'john@example.com', '$pass')");
-$john_id = $conn->insert_id;
+// 5. Insert Customers (Password: password123)
+$cust_pass = password_hash('password123', PASSWORD_DEFAULT);
+$conn->query("INSERT INTO customers (first_name, last_name, user_address, date_of_birth, phone_number, email, password_hash) VALUES 
+    ('Customer', 'A', '101 Piccadilly, Manchester', '1990-01-01', '07700000001', 'a@example.com', '$cust_pass')");
+$cust_a_id = $conn->insert_id;
 
-$conn->query("INSERT INTO customers (first_name, last_name, user_address, date_of_birth, phone_number, email, password_hash) VALUES ('Jane', 'Smith', '456 Honey St', '1992-05-15', '07787654321', 'jane@example.com', '$pass')");
-$jane_id = $conn->insert_id;
+$conn->query("INSERT INTO customers (first_name, last_name, user_address, date_of_birth, phone_number, email, password_hash) VALUES 
+    ('Customer', 'B', '202 Deansgate, Manchester', '1992-05-15', '07700000002', 'b@example.com', '$cust_pass')");
 
-// 6. Insert Services
-$conn->query("INSERT INTO services (name, description, activity_date, activity_time, cost, is_available) VALUES ('Morning Yoga', 'Relaxing yoga', '2026-03-20', '08:00:00', 15.00, 1)");
+// 6. Insert Services/Activities
+$conn->query("INSERT INTO services (name, description, activity_date, activity_time, cost, is_available) VALUES 
+    ('Hotel Gym', '24/7 Access to fitness center', CURDATE(), '00:00:00', 0.00, 1)");
+$conn->query("INSERT INTO services (name, description, activity_date, activity_time, cost, is_available) VALUES 
+    ('Spa Treatment', '1 Hour full body massage', '2026-03-25', '14:00:00', 55.00, 1)");
 
-// 7. Insert Overlapping Booking for Testing
+// 7. Insert an existing booking to block Room 201 for test cases
 $sql = "INSERT INTO bookings (room_type_id, customer_id, check_in_date, check_out_date, price, booking_status) 
-        VALUES ($deluxe_id, $john_id, '2026-03-20', '2026-03-25', 750.00, 'booked')";
+        VALUES ($deluxe_id, $cust_a_id, '2026-03-20', '2026-03-25', 750.00, 'booked')";
 
 if ($conn->query($sql)) {
-    echo "Sample data inserted successfully!<br>";
+    echo "<h1>Test Data Successfully Added</h1>";
+    echo "<h3>Added Data Summary:</h3>";
+    echo "<ul>";
+    echo "<li><b>Room Types:</b> Single Standard (£50), Deluxe Suite (£150)</li>";
+    echo "<li><b>Rooms:</b> 101, 102 (Single), 201 (Deluxe)</li>";
+    echo "<li><b>Staff (Pass: password123):</b> admin@example.com (Manager), staff@example.com (Reception), cleaner@example.com (Cleaner)</li>";
+    echo "<li><b>Customers (Pass: password123):</b> a@example.com, b@example.com</li>";
+    echo "<li><b>Services:</b> Hotel Gym, Spa Treatment</li>";
+    echo "<li><b>Active Bookings:</b> Customer A (Deluxe Suite, March 20-25)</li>";
+    echo "</ul>";
 } else {
-    echo "Final insert failed: " . $conn->error . "<br>";
+    echo "Error inserting blocker booking: " . $conn->error;
 }
 
 $conn->close();
