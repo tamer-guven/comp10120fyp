@@ -135,6 +135,12 @@ $rooms = $conn->query("SELECT r.room_id, r.room_number, rt.type AS room_type FRO
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             <h1 class="text-3xl font-extrabold text-gray-900 tracking-wider">The <span class="text-amber-500">Bee</span> Hotel <span class="text-sm text-gray-600 font-normal">Manager</span></h1>
             <nav class="space-x-4 flex items-center">
+                <button class="px-4 py-2 text-gray-700 rounded-lg hover:text-amber-600 transition duration-150 font-medium" onclick="window.location.href='admin_activities.php'">
+                    Manage Activities
+                </button>
+                <button class="px-4 py-2 text-gray-700 rounded-lg hover:text-amber-600 transition duration-150 font-medium" onclick="window.location.href='manager_cleaning.php'">
+                    Cleaning Overview
+                </button>
                 <button class="px-4 py-2 text-gray-700 rounded-lg hover:text-amber-600 transition duration-150 font-medium" onclick="window.location.href='admin_dashboard.php'">
                     Admin Dashboard
                 </button>
