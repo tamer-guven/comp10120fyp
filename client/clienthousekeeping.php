@@ -10,7 +10,7 @@ require_once '../database/db.php';
 
 // Redirect to login if not logged in
 if (!isset($_SESSION['user_id'])) {
-    header("Location: clientlogin.php");
+    header("Location: ../login.php");
     exit();
 }
 
@@ -175,7 +175,7 @@ if ($booking['customer_id'] != $_SESSION['user_id']){
             window.location.href = filename;
         }
         function handleLogout() {
-            goToPage('clientlogin.php');
+            goToPage('../login.php');
         }
 
         // --- Time Slot Generation Logic ---

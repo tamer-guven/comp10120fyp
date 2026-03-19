@@ -201,7 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php if (!$staff_id): ?>
       <div class="bg-white p-8 rounded-2xl shadow-xl border-t-4 border-amber-500">
         <p class="text-lg text-gray-700 mb-4">Admin access required. Please log in.</p>
-        <a href="stafflogin.php" class="inline-block px-6 py-3 bg-amber-500 text-gray-900 font-semibold rounded-lg hover:bg-amber-600 transition">Log In</a>
+        <a href="../login.php" class="inline-block px-6 py-3 bg-amber-500 text-gray-900 font-semibold rounded-lg hover:bg-amber-600 transition">Log In</a>
       </div>
     <?php else: ?>
       <?php
@@ -331,7 +331,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       window.location.href = filename;
     }
     function handleLogout() {
-      window.location.href = 'stafflogin.php';
+      window.location.href = '../login.php';
     }
 
     async function adminCheckIn(bookingId, btn) {

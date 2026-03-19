@@ -5,7 +5,7 @@ require '../includes/housekeeping_scheduler.php';
 
 // If the session variable isn't set, kick them back to login
 if (!isset($_SESSION['user_id'])) {
-    header("Location: clientlogin.php");
+    header("Location: ../login.php");
     exit();
 }
 
@@ -429,7 +429,7 @@ if ($current_booking && $current_booking['booking_status'] === 'checked_in' && !
 
         function handleLogout() {
             // Redirect to a logout script or directly back to login
-            window.location.href = 'clientlogin.php';
+            window.location.href = '../login.php';
         }
 
         function handleCheckInOut(bookingId, action) {
