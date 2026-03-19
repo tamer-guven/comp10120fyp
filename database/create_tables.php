@@ -103,6 +103,9 @@ check_created("staff", $conn, $sql);
 $sql = "CREATE TABLE IF NOT EXISTS services(
   service_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(255),
+  description TEXT,
+  activity_date DATE DEFAULT NULL,
+  activity_time TIME DEFAULT NULL,
   cost DECIMAL(10,2),
   is_available BOOLEAN
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
