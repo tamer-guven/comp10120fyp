@@ -21,6 +21,7 @@ $conn->select_db("hotel_management_db");
 //for testing
 //$conn->query("SET FOREIGN_KEY_CHECKS = 0");
 
+$conn->query("DROP TABLE IF EXISTS room_access_codes");
 $conn->query("DROP TABLE IF EXISTS services_customers");
 $conn->query("DROP TABLE IF EXISTS housekeeping_requests");
 $conn->query("DROP TABLE IF EXISTS bookings");
@@ -149,6 +150,25 @@ $sql = "CREATE TABLE IF NOT EXISTS housekeeping_requests(
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
 
 check_created("housekeeping_requests", $conn, $sql);
+
+$sql = "CREATE TABLE IF NOT EXISTS room_access_codes(
+  access_code_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  booking_id INT UNSIGNED UNIQUE NOT NULL,
+  room_id INT UNSIGNED UNIQUE NOT NULL,
+  pin CHAR(6) DEFAULT NULL,
+  valid_from DATETIME NOT NULL,
+  valid_to DATETIME NOT NULL,
+  CONSTRAINT rac_booking
+    FOREIGN KEY (booking_id) REFERENCES bookings(booking_id)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE,
+  CONSTRAINT rac_room
+    FOREIGN KEY (room_id) REFERENCES rooms(room_id)
+    ON DELETE RESTRICT
+    ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+
+check_created("room_access_codes", $conn, $sql);
 
 $conn->close();
 ?>

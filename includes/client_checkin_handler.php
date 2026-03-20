@@ -2,6 +2,8 @@
 header('Content-Type: application/json');
 session_start();
 require_once '../database/db.php';
+require '../includes/housekeeping_scheduler.php';
+require_once '../includes/room_codes_handler.php';
 
 $conn->select_db("hotel_management_db");
 
@@ -81,7 +83,14 @@ if ($action === 'check_in') {
     $update->bind_param("ii", $room['room_id'], $booking_id);
 
     if ($update->execute()) {
-        echo json_encode(['success' => true, 'message' => 'Checked in successfully! Room assigned: #' . $room['room_number']]);
+        //Generate a pin
+        try{                
+            $pin_status = add_pin_to_table($conn, $booking_id);
+        } catch (Throwable $e) {
+            $pin_status = $e->getMessage();
+        }
+
+        echo json_encode(['success' => true, 'message' => 'Checked in successfully! Room assigned: #' . $room['room_number'], 'pin' => $pin_status]);
     } else {
         echo json_encode(['success' => false, 'message' => 'Database error: ' . $conn->error]);
     }
@@ -94,10 +103,24 @@ elseif ($action === 'check_out') {
         exit;
     }
 
+    // get room_id for housekeeping
+    $get = $conn->prepare("SELECT room_id FROM bookings WHERE booking_id = ?"); 
+    $get->bind_param("i", $booking_id); 
+    $get->execute(); 
+    $result = $get->get_result(); 
+    $row = $result->fetch_assoc(); 
+    $room_id = $row['room_id'];
+
     $update = $conn->prepare("UPDATE bookings SET booking_status = 'checked_out' WHERE booking_id = ?");
     $update->bind_param("i", $booking_id);
 
     if ($update->execute()) {
+        // assign housekeeping and delete pin
+        ob_start();
+        handle_checkout_hk($room_id);
+        update_pin($conn, $booking_id, null);
+        ob_end_clean();
+
         echo json_encode(['success' => true, 'message' => 'Checked out successfully. Thank you for your stay!']);
     } else {
         echo json_encode(['success' => false, 'message' => 'Database error: ' . $conn->error]);

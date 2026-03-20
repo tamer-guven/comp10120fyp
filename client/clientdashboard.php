@@ -1,7 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../database/db.php';
-require '../includes/housekeeping_scheduler.php';
+require_once '../includes/room_codes_handler.php';
 
 // If the session variable isn't set, kick them back to login
 if (!isset($_SESSION['user_id'])) {
@@ -13,6 +13,7 @@ $customer_id = $_SESSION['user_id'];
 $conn->select_db("hotel_management_db");
 
 // Handle check-in/check-out API requests
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     
@@ -117,12 +118,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $update->bind_param("ii", $room['room_id'], $booking_id);
         
         if ($update->execute()) {
-            echo json_encode(['success' => true, 'message' => 'Checked in successfully. Room assigned: #' . $room['room_number'], 'booking_id' => $booking_id, 'room_number' => $room['room_number']]);
+            $update->close();
+
+            echo json_encode(['success' => true, 'message' => 'Checked in successfully. Room assigned: #' . $room['room_number'], 'booking_id' => $booking_id, 'room_number' => $room['room_number'], 'pin' => $pin_status]);
+            exit;
         } else {
+            $update->close();
             http_response_code(500);
             echo json_encode(['success' => false, 'message' => 'Database error: ' . $conn->error]);
+            exit;
         }
-        $update->close();
     }
     // Handle check-out
     elseif ($action === 'checkout') {
@@ -145,9 +150,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $update->bind_param("i", $booking_id);
         
         if ($update->execute()) {
-            //assign housekeeping
+            //assign housekeeping and delete pin
             ob_start();
             handle_checkout_hk($room_id);
+            update_pin($conn, $booking_id, null);
             ob_end_clean();
 
             echo json_encode(['success' => true, 'message' => 'Checked out successfully.', 'booking_id' => $booking_id]);
@@ -165,6 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $conn->close();
     exit;
 }
+
 
 // Fetch customer first name
 $customer_stmt = $conn->prepare("SELECT first_name FROM customers WHERE customer_id = ? LIMIT 1");
@@ -215,7 +222,7 @@ if ($current_booking && $current_booking['booking_status'] === 'checked_in'){
         $current_housekeeping[] = $row;
     }
     $get_housekeeping->close();
-    }
+}
 // Fetch past bookings for this customer, including activities that occurred during each stay
 $past_stmt = $conn->prepare("SELECT b.booking_id, b.check_in_date, b.check_out_date, b.booking_status, b.room_id, r.room_number, rt.type, b.price,
         (
@@ -293,6 +300,9 @@ $past_stmt->close();
                             <p><span class="font-bold text-gray-900">Room:</span> <span class="text-amber-600"><?php echo ($current_booking['room_id'] > 0) ? htmlspecialchars($current_booking['room_number']) : 'Not assigned yet'; ?></span> (<?php echo htmlspecialchars($current_booking['type']); ?>)</p>
                             <p><span class="font-bold text-gray-900">Check-in:</span> <?php echo date("M j, Y", strtotime($current_booking['check_in_date'])); ?></p>
                             <p class="pt-2"><span class="font-bold text-gray-900">Status:</span> <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold"><?php echo ucfirst(str_replace('_', ' ', $current_booking['booking_status'])); ?></span></p>
+                            <?php if ($current_booking['booking_status'] === 'checked_in'){$pin = get_pin($conn, $current_booking['booking_id']);?>
+                            <p class="pt-2"><span class="font-bold text-gray-900">Pin:</span> <span id="pin_display"><?php echo get_pin($conn, $current_booking['booking_id']) ?></span></p>
+                            <?php }?>
                         </div>
                         <div class="flex flex-col">
                             <p><span class="font-bold text-gray-900">Booking ID:</span> #BEE<?php echo $current_booking['booking_id']; ?></p>
@@ -369,7 +379,6 @@ $past_stmt->close();
                     </a>
                 </div>
             <?php endif; ?>
-            </div>
 
             <!-- Right Column: Account Overview -->
             <div class="lg:col-span-1 bg-gray-800 p-6 md:p-8 rounded-2xl shadow-xl space-y-4 text-white h-fit">
