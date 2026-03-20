@@ -300,9 +300,18 @@ $past_stmt->close();
                             <p><span class="font-bold text-gray-900">Room:</span> <span class="text-amber-600"><?php echo ($current_booking['room_id'] > 0) ? htmlspecialchars($current_booking['room_number']) : 'Not assigned yet'; ?></span> (<?php echo htmlspecialchars($current_booking['type']); ?>)</p>
                             <p><span class="font-bold text-gray-900">Check-in:</span> <?php echo date("M j, Y", strtotime($current_booking['check_in_date'])); ?></p>
                             <p class="pt-2"><span class="font-bold text-gray-900">Status:</span> <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold"><?php echo ucfirst(str_replace('_', ' ', $current_booking['booking_status'])); ?></span></p>
-                            <?php if ($current_booking['booking_status'] === 'checked_in'){$pin = get_pin($conn, $current_booking['booking_id']);?>
-                            <p class="pt-2"><span class="font-bold text-gray-900">Pin:</span> <span id="pin_display"><?php echo get_pin($conn, $current_booking['booking_id']) ?></span></p>
+                            <?php if ($current_booking['booking_status'] === 'checked_in'){ $pin = get_pin($conn, $current_booking['booking_id']); ?>
+                            <p class="pt-2">
+                                <span class="font-bold text-gray-900">Pin:</span> 
+                                <span class="text-gray-700 px-3 py-1 rounded-md font-mono font-semibold text-sm cursor-pointer select-none hover:bg-gray-100 transition" 
+                                    data-pin="<?php echo htmlspecialchars($pin); ?>" 
+                                    onclick="togglePin(this)"
+                                    title="Click to reveal">
+                                    ******
+                                </span>
+                            </p>
                             <?php }?>
+
                         </div>
                         <div class="flex flex-col">
                             <p><span class="font-bold text-gray-900">Booking ID:</span> #BEE<?php echo $current_booking['booking_id']; ?></p>
@@ -447,6 +456,16 @@ $past_stmt->close();
                 console.error('Error:', error);
                 alert('Network error. Please try again.');
             });
+        }
+
+        function togglePin(element) {
+            const actualPin = element.getAttribute('data-pin');
+            
+            if (element.innerText === '******') {
+                element.innerText = actualPin;
+            } else {
+                element.innerText = '******';
+            }
         }
     </script>
 </body>
