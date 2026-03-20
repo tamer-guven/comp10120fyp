@@ -18,9 +18,6 @@ check_created("hotel_management_db", $conn, $sql);
 
 $conn->select_db("hotel_management_db");
 
-//for testing
-//$conn->query("SET FOREIGN_KEY_CHECKS = 0");
-
 $conn->query("DROP TABLE IF EXISTS room_access_codes");
 $conn->query("DROP TABLE IF EXISTS services_customers");
 $conn->query("DROP TABLE IF EXISTS housekeeping_requests");
@@ -30,9 +27,6 @@ $conn->query("DROP TABLE IF EXISTS room_types");
 $conn->query("DROP TABLE IF EXISTS staff");
 $conn->query("DROP TABLE IF EXISTS customers");
 $conn->query("DROP TABLE IF EXISTS services");
-
-//$conn->query("SET FOREIGN_KEY_CHECKS = 1");
-
 
 
 $sql = "CREATE TABLE IF NOT EXISTS customers(
@@ -57,7 +51,7 @@ check_created("room_types", $conn, $sql);
 
 $sql = "CREATE TABLE IF NOT EXISTS rooms(
   room_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  room_number INT NOT NULL,
+  room_number INT NOT NULL UNIQUE,
   room_type_id INT UNSIGNED NOT NULL,
   last_cleaned DATE NOT NULL,
   CONSTRAINT fk_room_type 
@@ -70,7 +64,7 @@ check_created("rooms", $conn, $sql);
 
 $sql = "CREATE TABLE IF NOT EXISTS bookings(
   booking_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  room_id INT UNSIGNED NOT NULL DEFAULT 0,
+  room_id INT UNSIGNED DEFAULT NULL,
   room_type_id INT UNSIGNED NOT NULL,
   customer_id INT UNSIGNED NOT NULL,
   check_in_date DATE NOT NULL,
@@ -78,6 +72,10 @@ $sql = "CREATE TABLE IF NOT EXISTS bookings(
   check_out_date DATE NOT NULL,
   price DECIMAL(10,2) NOT NULL,
   actual_check_in DATETIME DEFAULT NULL,
+  CONSTRAINT fk_booking_room
+    FOREIGN KEY (room_id) REFERENCES rooms(room_id)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE,
   CONSTRAINT fk_booking_room_type
     FOREIGN KEY (room_type_id) REFERENCES room_types(room_type_id)
     ON DELETE RESTRICT
@@ -139,6 +137,7 @@ $sql = "CREATE TABLE IF NOT EXISTS housekeeping_requests(
   notes TEXT,
   status ENUM('scheduled','assigned','in_progress','completed','cancelled') NOT NULL DEFAULT 'scheduled',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  completed_at DATETIME DEFAULT NULL,
   CONSTRAINT fk_hk_cleaner
     FOREIGN KEY (staff_id) REFERENCES staff(staff_id)
     ON DELETE SET NULL

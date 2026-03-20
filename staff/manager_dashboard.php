@@ -4,7 +4,7 @@ require_once '../database/db.php';
 
 // Only allow logged-in managers
 if (!isset($_SESSION['staff_id']) || ($_SESSION['role'] ?? '') !== 'manager') {
-    header("Location: stafflogin.php");
+    header("Location: ../login.php");
     exit();
 }
 
@@ -43,30 +43,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'delete_staff') {
         $staff_id = (int)($_POST['staff_id'] ?? 0);
         if ($staff_id > 0) {
-            $stmt = $conn->prepare("DELETE FROM staff WHERE staff_id = ?");
-            $stmt->bind_param('i', $staff_id);
-            $stmt->execute();
-            $stmt->close();
-            $flash = 'Staff member removed.';
-        }
-    }
-
-    // Add room type
-    if ($action === 'add_room_type') {
-        $type = trim($_POST['type'] ?? '');
-        $price = $_POST['base_price'] ?? '';
-        $max_guests = (int)($_POST['max_guests'] ?? 0);
-        if ($type && is_numeric($price) && $max_guests > 0) {
-            $stmt = $conn->prepare("INSERT INTO room_types (type, base_price, max_guests) VALUES (?, ?, ?)");
-            $stmt->bind_param('sdi', $type, $price, $max_guests);
-            if ($stmt->execute()) {
-                $flash = 'Room type added.';
-            } else {
-                $flash = 'Error adding room type: ' . $conn->error;
+            try {
+                $stmt = $conn->prepare("DELETE FROM staff WHERE staff_id = ?");
+                $stmt->bind_param('i', $staff_id);
+                $stmt->execute();
+                $stmt->close();
+                $flash = 'Staff member removed.';
+            } catch (mysqli_sql_exception $e) {
+                $flash = 'Cannot remove: Staff member has assigned tasks or history.';
             }
-            $stmt->close();
-        } else {
-            $flash = 'Please provide room type, price, and max guests.';
         }
     }
 
@@ -74,11 +59,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'delete_room_type') {
         $room_type_id = (int)($_POST['room_type_id'] ?? 0);
         if ($room_type_id > 0) {
-            $stmt = $conn->prepare("DELETE FROM room_types WHERE room_type_id = ?");
-            $stmt->bind_param('i', $room_type_id);
-            $stmt->execute();
-            $stmt->close();
-            $flash = 'Room type removed (ensure no rooms depend on it).';
+            try {
+                $stmt = $conn->prepare("DELETE FROM room_types WHERE room_type_id = ?");
+                $stmt->bind_param('i', $room_type_id);
+                $stmt->execute();
+                $stmt->close();
+                $flash = 'Room type removed.';
+            } catch (mysqli_sql_exception $e) {
+                $flash = 'Cannot remove: There are active rooms using this room type.';
+            }
+        }
+    }
+
+    // Delete room
+    if ($action === 'delete_room') {
+        $room_id = (int)($_POST['room_id'] ?? 0);
+        if ($room_id > 0) {
+            try {
+                $stmt = $conn->prepare("DELETE FROM rooms WHERE room_id = ?");
+                $stmt->bind_param('i', $room_id);
+                $stmt->execute();
+                $stmt->close();
+                $flash = 'Room removed.';
+            } catch (mysqli_sql_exception $e) {
+                $flash = 'Cannot remove: Room has active bookings or housekeeping history.';
+            }
         }
     }
 
@@ -97,18 +102,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->close();
         } else {
             $flash = 'Please provide room number and room type.';
-        }
-    }
-
-    // Delete room
-    if ($action === 'delete_room') {
-        $room_id = (int)($_POST['room_id'] ?? 0);
-        if ($room_id > 0) {
-            $stmt = $conn->prepare("DELETE FROM rooms WHERE room_id = ?");
-            $stmt->bind_param('i', $room_id);
-            $stmt->execute();
-            $stmt->close();
-            $flash = 'Room removed (ensure no bookings depend on it).';
         }
     }
 }
@@ -135,8 +128,14 @@ $rooms = $conn->query("SELECT r.room_id, r.room_number, rt.type AS room_type FRO
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
             <h1 class="text-3xl font-extrabold text-gray-900 tracking-wider">The <span class="text-amber-500">Bee</span> Hotel <span class="text-sm text-gray-600 font-normal">Manager</span></h1>
             <nav class="space-x-4 flex items-center">
+                <button class="px-4 py-2 text-gray-700 rounded-lg hover:text-amber-600 transition duration-150 font-medium" onclick="window.location.href='admin_activities.php'">
+                    Manage Activities
+                </button>
+                <button class="px-4 py-2 text-gray-700 rounded-lg hover:text-amber-600 transition duration-150 font-medium" onclick="window.location.href='manager_cleaning.php'">
+                    Cleaning Overview
+                </button>
                 <button class="px-4 py-2 text-gray-700 rounded-lg hover:text-amber-600 transition duration-150 font-medium" onclick="window.location.href='admin_dashboard.php'">
-                    Admin Dashboard
+                    Dashboard
                 </button>
                 <button id="logoutBtn" class="px-5 py-2 bg-gray-800 text-white rounded-lg shadow-md hover:bg-gray-900 transition duration-150 font-medium" onclick="handleLogout()">
                     Log Out
@@ -176,7 +175,7 @@ $rooms = $conn->query("SELECT r.room_id, r.room_number, rt.type AS room_type FRO
                     <select name="role" class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-amber-500 focus:border-amber-500" required>
                         <option value="">Select role</option>
                         <option value="manager">Manager</option>
-                        <option value="admin">Admin</option>
+                        <option value="receptionist">Receptionist</option>
                         <option value="cleaner">Cleaner</option>
                     </select>
                     <div class="md:col-span-2">
@@ -314,7 +313,7 @@ $rooms = $conn->query("SELECT r.room_id, r.room_number, rt.type AS room_type FRO
 
     <script>
         function handleLogout() {
-            window.location.href = 'stafflogin.php';
+            window.location.href = '../login.php';
         }
     </script>
 </body>

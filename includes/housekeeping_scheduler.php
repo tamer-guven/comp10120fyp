@@ -37,7 +37,7 @@ function assign_task($time_obj, $duration, $time_tolerance=30){
 function get_task_count(){
     $sql = "SELECT s.staff_id, COALESCE(SUM(h.estimated_duration), 0) AS task_weight
             FROM staff s
-            LEFT JOIN housekeeping_requests h ON s.staff_id = h.staff_id
+            LEFT JOIN housekeeping_requests h ON s.staff_id = h.staff_id AND h.status IN ('scheduled', 'assigned', 'in_progress')
             WHERE lower(s.role) = 'cleaner'
             GROUP BY s.staff_id
             ORDER BY task_weight ASC";

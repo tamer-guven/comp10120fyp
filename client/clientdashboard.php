@@ -5,15 +5,12 @@ require_once '../includes/room_codes_handler.php';
 
 // If the session variable isn't set, kick them back to login
 if (!isset($_SESSION['user_id'])) {
-    header("Location: clientlogin.php");
+    header("Location: ../login.php");
     exit();
 }
 
 $customer_id = $_SESSION['user_id'];
 $conn->select_db("hotel_management_db");
-
-// Handle check-in/check-out API requests
-// Done in '../includes/client_checkin_handler.php'
 
 // Fetch customer first name
 $customer_stmt = $conn->prepare("SELECT first_name FROM customers WHERE customer_id = ? LIMIT 1");
@@ -24,8 +21,8 @@ $customer_data = $customer_result->fetch_assoc();
 $first_name = $customer_data ? $customer_data['first_name'] : '';
 $customer_stmt->close();
 
-// Fetch the current/latest booking for this customer
-$stmt = $conn->prepare("SELECT b.booking_id, b.check_in_date, b.check_out_date, b.booking_status, b.actual_check_in, b.room_id, r.room_number, rt.type FROM bookings b LEFT JOIN rooms r ON b.room_id = r.room_id JOIN room_types rt ON b.room_type_id = rt.room_type_id WHERE b.customer_id = ? ORDER BY b.check_in_date DESC LIMIT 1");
+// Fetch the current (active) booking for this customer
+$stmt = $conn->prepare("SELECT b.booking_id, b.check_in_date, b.check_out_date, b.booking_status, b.actual_check_in, b.room_id, r.room_number, rt.type FROM bookings b LEFT JOIN rooms r ON b.room_id = r.room_id JOIN room_types rt ON b.room_type_id = rt.room_type_id WHERE b.customer_id = ? AND b.booking_status IN ('booked','checked_in') ORDER BY b.check_in_date ASC LIMIT 1");
     
 $stmt->bind_param("i", $customer_id);
 $stmt->execute();
@@ -34,54 +31,21 @@ $current_booking = $result->fetch_assoc();
 
 $stmt->close();
 
-//Fetch any booked activites or housekeeping requests
-    $get_services = $conn->prepare("SELECT s.name FROM services s JOIN services_customers s_c ON s.service_id = s_c.service_id WHERE s_c.customer_id = ? ORDER BY s_c.services_customer_id ASC");
-
-    $get_services->bind_param("i", $customer_id);
-    $get_services->execute();
-    $result = $get_services->get_result();
-    $current_services = [];
-    while ($row = $result->fetch_assoc()) {
-        $current_services[] = $row;
-    }
-    $get_services->close();
-
-    $current_housekeeping = [];
-if ($current_booking && $current_booking['booking_status'] === 'checked_in'){
-    $get_housekeeping = $conn->prepare("
-        SELECT hk.service_type, hk.scheduled_datetime, hk.status
-        FROM housekeeping_requests hk
-        JOIN bookings b ON hk.room_id = b.room_id
-        WHERE b.customer_id = ?
-        ORDER BY hk.scheduled_datetime ASC
-    ");
-
-    $get_housekeeping->bind_param("i", $customer_id);
-    $get_housekeeping->execute();
-    $result = $get_housekeeping->get_result();
-
-    while ($row = $result->fetch_assoc()) {
-        $current_housekeeping[] = $row;
-    }
-    $get_housekeeping->close();
-}
-// Fetch past bookings for this customer, including activities that occurred during each stay
-$past_stmt = $conn->prepare("SELECT b.booking_id, b.check_in_date, b.check_out_date, b.booking_status, b.room_id, r.room_number, rt.type, b.price,
-        (
-                SELECT COALESCE(SUM(s.cost), 0)
-                FROM services_customers sc
-                JOIN services s ON sc.service_id = s.service_id
-                WHERE sc.customer_id = b.customer_id
-                    AND (
-                        s.activity_date IS NULL
-                        OR (s.activity_date BETWEEN b.check_in_date AND b.check_out_date)
-                    )
-        ) AS activity_total
-        FROM bookings b
-        LEFT JOIN rooms r ON b.room_id = r.room_id
-        JOIN room_types rt ON b.room_type_id = rt.room_type_id
-        WHERE b.customer_id = ? AND b.booking_status IN ('checked_out', 'cancelled')
-        ORDER BY b.check_in_date DESC");
+// Fetch past (checked-out) bookings for account overview, including activities within each stay window
+$past_stmt = $conn->prepare("SELECT b.booking_id, b.check_in_date, b.check_out_date, b.booking_status, b.room_id, b.price, r.room_number, rt.type,
+    (
+        SELECT COALESCE(SUM(s.cost), 0)
+        FROM services_customers sc
+        JOIN services s ON sc.service_id = s.service_id
+        WHERE sc.customer_id = b.customer_id
+          AND s.activity_date IS NOT NULL
+          AND s.activity_date BETWEEN b.check_in_date AND b.check_out_date
+    ) AS activity_total
+    FROM bookings b
+    LEFT JOIN rooms r ON b.room_id = r.room_id
+    JOIN room_types rt ON b.room_type_id = rt.room_type_id
+    WHERE b.customer_id = ? AND b.booking_status = 'checked_out'
+    ORDER BY b.check_out_date DESC");
 
 $past_stmt->bind_param("i", $customer_id);
 $past_stmt->execute();
@@ -90,8 +54,47 @@ $past_bookings = [];
 while ($row = $past_result->fetch_assoc()) {
     $past_bookings[] = $row;
 }
-
 $past_stmt->close();
+
+//Fetch any booked activities during the current stay
+$current_services = [];
+if ($current_booking) {
+    $get_services = $conn->prepare("SELECT s.name, s.activity_date, s.activity_time, s.description
+        FROM services s
+        JOIN services_customers s_c ON s.service_id = s_c.service_id
+        WHERE s_c.customer_id = ?
+            AND s.activity_date IS NOT NULL
+            AND s.activity_date BETWEEN ? AND ?
+        ORDER BY s.activity_date ASC, COALESCE(s.activity_time, '23:59:59') ASC, s_c.services_customer_id ASC");
+
+    $get_services->bind_param("iss", $customer_id, $current_booking['check_in_date'], $current_booking['check_out_date']);
+    $get_services->execute();
+    $result = $get_services->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $current_services[] = $row;
+    }
+    $get_services->close();
+}
+
+$current_housekeeping = [];
+if ($current_booking && $current_booking['booking_status'] === 'checked_in' && !empty($current_booking['room_id'])){
+    $get_housekeeping = $conn->prepare("
+        SELECT DISTINCT hk.service_type, hk.scheduled_datetime, hk.status
+        FROM housekeeping_requests hk
+        WHERE hk.room_id = ?
+        AND hk.status IN ('scheduled','assigned','in_progress')
+        ORDER BY hk.scheduled_datetime ASC
+    ");
+
+    $get_housekeeping->bind_param("i", $current_booking['room_id']);
+    $get_housekeeping->execute();
+    $result = $get_housekeeping->get_result();
+
+    while ($row = $result->fetch_assoc()) {
+        $current_housekeeping[] = $row;
+    }
+    $get_housekeeping->close();
+}
 
 ?>
 
@@ -127,19 +130,18 @@ $past_stmt->close();
     </header>
 
     <main class="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
-        <h2 class="text-4xl font-bold text-gray-900 mb-2">Welcome, <?php echo htmlspecialchars($first_name ?? '', ENT_QUOTES, 'UTF-8'); ?>!</h2>
+        <h2 class="text-4xl font-bold text-gray-900 mb-2">Welcome, <?php echo htmlspecialchars($_SESSION['first_name']); ?>!</h2>
         <p class="text-gray-600 text-lg mb-8">Manage your current stay and review past bookings below.</p>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Left Column: Your Current Stay -->
-            <div class="lg:col-span-2">
+        <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] gap-8 items-start">
+            <div class="space-y-6">
             <?php if ($current_booking): ?>
                 <div class="bg-white p-6 md:p-8 rounded-2xl shadow-xl border-t-4 border-amber-500 space-y-4">
                     <h3 class="text-3xl font-extrabold text-gray-900">Your Current Stay</h3>
                     
                     <div class="grid grid-cols-2 gap-4 text-gray-700">
                         <div>
-                            <p><span class="font-bold text-gray-900">Room:</span> <span class="text-amber-600"><?php echo ($current_booking['room_id'] > 0) ? htmlspecialchars($current_booking['room_number']) : 'Not assigned yet'; ?></span> (<?php echo htmlspecialchars($current_booking['type']); ?>)</p>
+                            <p><span class="font-bold text-gray-900">Room:</span> <span class="text-amber-600"><?php echo (!empty($current_booking['room_id'])) ? htmlspecialchars($current_booking['room_number']) : 'Not assigned yet'; ?></span> (<?php echo htmlspecialchars($current_booking['type']); ?>)</p>
                             <p><span class="font-bold text-gray-900">Check-in:</span> <?php echo date("M j, Y", strtotime($current_booking['check_in_date'])); ?></p>
                             <p class="pt-2"><span class="font-bold text-gray-900">Status:</span> <span class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-sm font-semibold"><?php echo ucfirst(str_replace('_', ' ', $current_booking['booking_status'])); ?></span></p>
                             <?php if ($current_booking['booking_status'] === 'checked_in'){ $pin = get_pin($conn, $current_booking['booking_id']); ?>
@@ -168,7 +170,6 @@ $past_stmt->close();
                     <h4 class="text-xl font-bold mb-3 text-gray-800">In-Stay Services</h4>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         
-                        <!-- Dynamic Link: Housekeeping (First row, first button) -->
                         <?php if ($current_booking['booking_status'] === 'checked_in'):?>
                             <button class="py-3 px-4 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition" 
                                 onclick="goToPage('clienthousekeeping.php?booking_id=<?php echo $current_booking['booking_id']; ?>')">
@@ -180,13 +181,11 @@ $past_stmt->close();
                             </button>
                         <?php endif; ?>
                         
-                        <!-- Dynamic Link: Activities -->
                         <button class="py-3 px-4 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition" 
                                 onclick="goToPage('clientactivities.php')">
                             Book Activities
                         </button>
                         
-                        <!-- Dynamic Link: Expenses (Second row, spanning 2 columns) -->
                         <button class="py-3 px-4 bg-amber-500 text-gray-900 font-semibold rounded-lg shadow-md hover:bg-amber-600 transition sm:col-span-2" 
                                 onclick="goToPage('clientexpenses.php')">
                             View Expenses
@@ -195,26 +194,6 @@ $past_stmt->close();
 
                 </div>
 
-                <div class="bg-gray-800 p-6 md:p-8 rounded-2xl shadow-xl space-y-4 text-white">
-                    <h3 class="text-2xl font-extrabold text-amber-500">Scheduled Activities</h3>
-                    <div class="scroll-container max-h-[200px] overflow-y-auto pr-2">
-                    <?php if (empty($current_services) && empty($current_housekeeping)): ?>
-                        <p class="text-sm text-gray-400 mb-4">No services currently booked.</p>
-                    <?php else: ?>
-                        <?php foreach ($current_services as $service): ?>
-                            <div class="border-b border-gray-700 pb-3 mb-3">
-                                <p class="font-bold"><?php echo $service['name']; ?></p>
-                            </div>
-                        <?php endforeach; ?>
-                        <?php foreach ($current_housekeeping as $hk): ?>
-                            <div class="border-b border-gray-700 pb-3 mb-3">
-                                <p class="font-bold">Housekeeping: <?php echo $hk['service_type']; ?></p>
-                                <p class="text-sm text-gray-400"><?php echo date('M j, Y', strtotime($hk['scheduled_datetime'])); ?></p>
-                                <p class="text-sm text-gray-400"><?php echo htmlspecialchars($hk['status']); ?></p>
-                            </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </div>
             </div>
             <?php else: ?>
                 <div class="bg-white p-12 rounded-2xl shadow-xl border-t-4 border-amber-500 text-center">
@@ -230,32 +209,69 @@ $past_stmt->close();
                     </a>
                 </div>
             <?php endif; ?>
-
-            <!-- Right Column: Account Overview -->
-            <div class="lg:col-span-1 bg-gray-800 p-6 md:p-8 rounded-2xl shadow-xl space-y-4 text-white h-fit">
-                <h3 class="text-2xl font-extrabold text-amber-500">Account Overview</h3>
-                <div class="scroll-container max-h-[400px] overflow-y-auto pr-2">
-                    <?php if (empty($past_bookings)): ?>
-                        <p class="text-sm text-gray-400 mb-4">Past stay history will appear here once your current visit is completed.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 gap-6">
+                <div class="bg-gray-800 p-6 md:p-8 rounded-2xl shadow-xl space-y-4 text-white">
+                    <h3 class="text-2xl font-extrabold text-amber-500">Scheduled Activities</h3>
+                    <div class="scroll-container max-h-[220px] overflow-y-auto pr-2">
+                    <?php if (empty($current_services) && empty($current_housekeeping)): ?>
+                        <p class="text-sm text-gray-400 mb-4">No services currently booked.</p>
                     <?php else: ?>
-                        <?php foreach ($past_bookings as $booking): ?>
-                            <?php 
-                                $activities = isset($booking['activity_total']) ? (float)$booking['activity_total'] : 0;
-                                $total_due = (float)$booking['price'] + $activities;
-                            ?>
+                        <?php foreach ($current_services as $service): ?>
                             <div class="border-b border-gray-700 pb-3 mb-3">
-                                <p class="font-bold">Booking #BEE<?php echo $booking['booking_id']; ?></p>
-                                <p class="text-sm text-gray-400"><?php echo date('M j, Y', strtotime($booking['check_in_date'])); ?> - <?php echo date('M j, Y', strtotime($booking['check_out_date'])); ?></p>
-                                <p class="text-sm text-gray-400"><?php echo htmlspecialchars($booking['type']); ?><?php echo ($booking['room_id'] > 0) ? ' (Room ' . htmlspecialchars($booking['room_number']) . ')' : ''; ?></p>
-                                <p class="text-sm text-amber-500 pt-1">Total: £<?php echo number_format($total_due, 2); ?></p>
-                                <?php if ($activities > 0): ?>
-                                    <p class="text-xs text-gray-400">Includes activities: £<?php echo number_format($activities, 2); ?></p>
+                                <p class="font-bold"><?php echo htmlspecialchars($service['name']); ?></p>
+                                <?php if (!empty($service['activity_date']) || !empty($service['activity_time'])): ?>
+                                    <p class="text-sm text-gray-400">
+                                        <?php if (!empty($service['activity_date'])): ?>
+                                            <?php echo date('M j, Y', strtotime($service['activity_date'])); ?>
+                                        <?php endif; ?>
+                                        <?php if (!empty($service['activity_time'])): ?>
+                                            at <?php echo date('g:i A', strtotime($service['activity_time'])); ?>
+                                        <?php endif; ?>
+                                    </p>
+                                <?php endif; ?>
+                                <?php if (!empty($service['description'])): ?>
+                                    <p class="text-xs text-gray-500 mt-1"><?php echo htmlspecialchars($service['description']); ?></p>
                                 <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
+                        <?php foreach ($current_housekeeping as $hk): ?>
+                            <div class="border-b border-gray-700 pb-3 mb-3">
+                                <p class="font-bold">Housekeeping: <?php echo htmlspecialchars($hk['service_type']); ?></p>
+                                <p class="text-sm text-gray-400"><?php echo date('M j, Y', strtotime($hk['scheduled_datetime'])); ?></p>
+                                <p class="text-sm text-gray-400"><?php echo htmlspecialchars($hk['status']); ?></p>
+                            </div>
+                        <?php endforeach; ?>
                     <?php endif; ?>
+                    </div>
                 </div>
-                <p class="text-xs text-gray-400 pt-2 border-t border-gray-700">Contact reception for detailed invoices of past stays.</p>
+
+                <div class="bg-gray-800 p-6 md:p-8 rounded-2xl shadow-xl space-y-4 text-white">
+                    <h3 class="text-2xl font-extrabold text-amber-500">Account Overview</h3>
+                    <div class="scroll-container max-h-[400px] overflow-y-auto pr-2">
+                        <?php if (empty($past_bookings)): ?>
+                            <p class="text-sm text-gray-400 mb-4">Past stay history will appear here once your current visit is completed.</p>
+                        <?php else: ?>
+                            <?php foreach ($past_bookings as $booking): ?>
+                                <?php 
+                                    $activities = isset($booking['activity_total']) ? (float)$booking['activity_total'] : 0;
+                                    $total_due = (float)$booking['price'] + $activities;
+                                ?>
+                                <div class="border-b border-gray-700 pb-3 mb-3">
+                                    <p class="font-bold">Booking #BEE<?php echo $booking['booking_id']; ?></p>
+                                    <p class="text-sm text-gray-400"><?php echo date('M j, Y', strtotime($booking['check_in_date'])); ?> - <?php echo date('M j, Y', strtotime($booking['check_out_date'])); ?></p>
+                                    <p class="text-sm text-gray-400"><?php echo htmlspecialchars($booking['type']); ?><?php echo (!empty($booking['room_id'])) ? ' (Room ' . htmlspecialchars($booking['room_number']) . ')' : ''; ?></p>
+                                    <p class="text-sm text-amber-500 pt-1">Total: £<?php echo number_format($total_due, 2); ?></p>
+                                    <?php if ($activities > 0): ?>
+                                        <p class="text-xs text-gray-400">Includes activities: £<?php echo number_format($activities, 2); ?></p>
+                                    <?php endif; ?>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                    <p class="text-xs text-gray-400 pt-2 border-t border-gray-700">Contact reception for detailed invoices of past stays.</p>
+                </div>
             </div>
         </div>
     </main>
@@ -266,8 +282,7 @@ $past_stmt->close();
         }
 
         function handleLogout() {
-            // Redirect to a logout script or directly back to login
-            window.location.href = 'clientlogin.php';
+            window.location.href = '../login.php';
         }
 
         function handleCheckInOut(bookingId, action) {

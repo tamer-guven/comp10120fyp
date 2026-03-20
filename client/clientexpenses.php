@@ -4,7 +4,7 @@ require_once '../database/db.php';
 
 // Redirect to login if not logged in
 if (!isset($_SESSION['user_id'])) {
-    header("Location: clientlogin.php");
+    header("Location: ../login.php");
     exit();
 }
 
@@ -210,7 +210,7 @@ if ($filter === 'all' || $filter === 'services') {
 
     <script>
         function handleLogout() {
-            window.location.href = 'clientlogin.html';
+            window.location.href = '../login.php';
         }
     </script>
 </body>

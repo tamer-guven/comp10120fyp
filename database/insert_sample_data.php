@@ -1,144 +1,77 @@
 <?php
-require_once "db.php";
+// Enable error reporting for debugging
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-$conn->select_db("hotel_management_db");
+require_once 'db.php';
 
-echo "<h2>Inserting Sample Data...</h2>";
-
-// Sample customer data
-$customers = [
-    [
-        'id' => 1,
-        'first_name' => 'John',
-        'last_name' => 'Doe',
-        'address' => '123 Main Street',
-        'dob' => '1990-05-15',
-        'phone' => '+1234567890',
-        'email' => 'b@example.com',
-        'password' => 'password123'
-    ],
-    [
-        'id' => 2,
-        'first_name' => 'Jane',
-        'last_name' => 'Smith',
-        'address' => '456 Oak Avenue',
-        'dob' => '1988-03-22',
-        'phone' => '+1234567891',
-        'email' => 'a@example.com',
-        'password' => 'password123'
-    ]
-];
-
-// 1 room type
-$room_types = [
-    ['id' => 1, 'type' => 'Deluxe Suite', 'price' => 150.00, 'guests' => 2]
-];
-
-// 2 rooms of the same type
-$rooms = [
-    ['id' => 1, 'number' => 201, 'type_id' => 1],
-    ['id' => 2, 'number' => 202, 'type_id' => 1]
-];
-
-echo "<h3>Creating Customers...</h3>";
-foreach ($customers as $customer) {
-    $checkCustomer = "SELECT customer_id FROM customers WHERE customer_id = " . $customer['id'] . " LIMIT 1";
-    $result = $conn->query($checkCustomer);
-
-    if ($result->num_rows == 0) {
-        $password_hash = password_hash($customer['password'], PASSWORD_DEFAULT);
-        $sql = "INSERT INTO customers (customer_id, first_name, last_name, user_address, date_of_birth, phone_number, email, password_hash) 
-                VALUES (" . $customer['id'] . ", '" . $customer['first_name'] . "', '" . $customer['last_name'] . "', '" . $customer['address'] . "', '" . $customer['dob'] . "', '" . $customer['phone'] . "', '" . $customer['email'] . "', '$password_hash')";
-        if ($conn->query($sql)) {
-            echo "✓ Customer created (ID: " . $customer['id'] . " - " . $customer['first_name'] . " " . $customer['last_name'] . ")<br>";
-        } else {
-            echo "✗ Error creating customer: " . $conn->error . "<br>";
-        }
-    } else {
-        echo "✓ Customer already exists (ID: " . $customer['id'] . ")<br>";
-    }
+if (!$conn->select_db("hotel_management_db")) {
+    die("Error: Database 'hotel_management_db' does not exist. Run create_tables.php first.");
 }
 
-echo "<h3>Creating Room Types...</h3>";
-foreach ($room_types as $room_type) {
-    $checkRoomType = "SELECT room_type_id FROM room_types WHERE room_type_id = " . $room_type['id'] . " LIMIT 1";
-    $result = $conn->query($checkRoomType);
-
-    if ($result->num_rows == 0) {
-        $sql = "INSERT INTO room_types (room_type_id, type, base_price, max_guests) 
-                VALUES (" . $room_type['id'] . ", '" . $room_type['type'] . "', " . $room_type['price'] . ", " . $room_type['guests'] . ")";
-        if ($conn->query($sql)) {
-            echo "✓ Room type created (ID: " . $room_type['id'] . " - " . $room_type['type'] . ")<br>";
-        } else {
-            echo "✗ Error creating room type: " . $conn->error . "<br>";
-        }
-    } else {
-        echo "✓ Room type already exists (ID: " . $room_type['id'] . ")<br>";
-    }
+// 1. Clear existing data safely by disabling foreign key checks
+$conn->query("SET FOREIGN_KEY_CHECKS = 0");
+$tables = ['services_customers', 'housekeeping_requests', 'bookings', 'rooms', 'room_types', 'staff', 'customers', 'services'];
+foreach ($tables as $table) {
+    $conn->query("TRUNCATE TABLE $table");
 }
+$conn->query("SET FOREIGN_KEY_CHECKS = 1");
 
-echo "<h3>Creating Rooms...</h3>";
-foreach ($rooms as $room) {
-    $checkRoom = "SELECT room_id FROM rooms WHERE room_id = " . $room['id'] . " LIMIT 1";
-    $result = $conn->query($checkRoom);
+// 2. Insert Room Types
+$conn->query("INSERT INTO room_types (type, base_price, max_guests) VALUES ('Single Standard', 50.00, 1)");
+$single_id = $conn->insert_id;
 
-    if ($result->num_rows == 0) {
-        $sql = "INSERT INTO rooms (room_id, room_number, room_type_id, last_cleaned) 
-                VALUES (" . $room['id'] . ", " . $room['number'] . ", " . $room['type_id'] . ", CURDATE())";
-        if ($conn->query($sql)) {
-            echo "✓ Room created (ID: " . $room['id'] . ", Room #" . $room['number'] . ")<br>";
-        } else {
-            echo "✗ Error creating room: " . $conn->error . "<br>";
-        }
-    } else {
-        echo "✓ Room already exists (ID: " . $room['id'] . ")<br>";
-    }
-}
+$conn->query("INSERT INTO room_types (type, base_price, max_guests) VALUES ('Deluxe Suite', 150.00, 2)");
+$deluxe_id = $conn->insert_id;
 
-echo "<h3>Creating Bookings...</h3>";
-// Both customers book the same room type with overlapping dates
-// room_id=0 means not checked in yet, actual room assigned at check-in
-$bookings = [
-    [
-        'customer_id' => 1,
-        'room_id' => 0,
-        'check_in' => date('Y-m-d'),
-        'check_out' => date('Y-m-d', strtotime('+3 days')),
-        'status' => 'booked',
-        'price' => 450.00
-    ],
-    [
-        'customer_id' => 2,
-        'room_id' => 0,
-        'check_in' => date('Y-m-d'),
-        'check_out' => date('Y-m-d', strtotime('+3 days')),
-        'status' => 'booked',
-        'price' => 450.00
-    ]
-];
+// 3. Insert Rooms
+$conn->query("INSERT INTO rooms (room_number, room_type_id, last_cleaned) VALUES (101, $single_id, CURDATE())");
+$conn->query("INSERT INTO rooms (room_number, room_type_id, last_cleaned) VALUES (102, $single_id, CURDATE())");
+$conn->query("INSERT INTO rooms (room_number, room_type_id, last_cleaned) VALUES (201, $deluxe_id, CURDATE())");
 
-foreach ($bookings as $booking) {
-    $checkBooking = "SELECT booking_id FROM bookings WHERE customer_id = " . $booking['customer_id'] . " LIMIT 1";
-    $result = $conn->query($checkBooking);
+// 4. Insert Staff (Password: password123)
+$staff_pass = password_hash('password123', PASSWORD_DEFAULT); 
+$conn->query("INSERT INTO staff (first_name, last_name, role, phone_number, email, password_hash) VALUES 
+    ('Admin', 'User', 'manager', '0161111222', 'admin@example.com', '$staff_pass')");
+$conn->query("INSERT INTO staff (first_name, last_name, role, phone_number, email, password_hash) VALUES 
+    ('Reception', 'Staff', 'receptionist', '0161333444', 'staff@example.com', '$staff_pass')");
+$conn->query("INSERT INTO staff (first_name, last_name, role, phone_number, email, password_hash) VALUES 
+    ('Charlie', 'Cleaner', 'cleaner', '0161555666', 'cleaner@example.com', '$staff_pass')");
 
-    if ($result->num_rows == 0) {
-        $sql = "INSERT INTO bookings (room_id, room_type_id, customer_id, check_in_date, check_out_date, booking_status, price) 
-                VALUES (" . $booking['room_id'] . ", 1, " . $booking['customer_id'] . ", '" . $booking['check_in'] . "', '" . $booking['check_out'] . "', '" . $booking['status'] . "', " . $booking['price'] . ")";
-        if ($conn->query($sql)) {
-            $booking_id = $conn->insert_id;
-            echo "✓ Booking created (ID: $booking_id) for customer ID " . $booking['customer_id'] . "<br>";
-            echo "  - Check-in: " . $booking['check_in'] . "<br>";
-            echo "  - Check-out: " . $booking['check_out'] . "<br>";
-            echo "  - Status: " . $booking['status'] . "<br>";
-            echo "  - Price: $" . number_format($booking['price'], 2) . "<br><br>";
-        } else {
-            echo "✗ Error creating booking: " . $conn->error . "<br>";
-        }
-    } else {
-        echo "✓ Booking already exists for customer ID " . $booking['customer_id'] . "<br>";
-    }
+// 5. Insert Customers (Password: password123)
+$cust_pass = password_hash('password123', PASSWORD_DEFAULT);
+$conn->query("INSERT INTO customers (first_name, last_name, user_address, date_of_birth, phone_number, email, password_hash) VALUES 
+    ('Customer', 'A', '101 Piccadilly, Manchester', '1990-01-01', '07700000001', 'a@example.com', '$cust_pass')");
+$cust_a_id = $conn->insert_id;
+
+$conn->query("INSERT INTO customers (first_name, last_name, user_address, date_of_birth, phone_number, email, password_hash) VALUES 
+    ('Customer', 'B', '202 Deansgate, Manchester', '1992-05-15', '07700000002', 'b@example.com', '$cust_pass')");
+
+// 6. Insert Services/Activities
+$conn->query("INSERT INTO services (name, description, activity_date, activity_time, cost, is_available) VALUES 
+    ('Hotel Gym', '24/7 Access to fitness center', CURDATE(), '00:00:00', 0.00, 1)");
+$conn->query("INSERT INTO services (name, description, activity_date, activity_time, cost, is_available) VALUES 
+    ('Spa Treatment', '1 Hour full body massage', '2026-03-25', '14:00:00', 55.00, 1)");
+
+// 7. Insert an existing booking to block Room 201 for test cases
+$sql = "INSERT INTO bookings (room_type_id, customer_id, check_in_date, check_out_date, price, booking_status) 
+        VALUES ($deluxe_id, $cust_a_id, '2026-03-20', '2026-03-25', 750.00, 'booked')";
+
+if ($conn->query($sql)) {
+    echo "<h1>Test Data Successfully Added</h1>";
+    echo "<h3>Added Data Summary:</h3>";
+    echo "<ul>";
+    echo "<li><b>Room Types:</b> Single Standard (£50), Deluxe Suite (£150)</li>";
+    echo "<li><b>Rooms:</b> 101, 102 (Single), 201 (Deluxe)</li>";
+    echo "<li><b>Staff (Pass: password123):</b> admin@example.com (Manager), staff@example.com (Reception), cleaner@example.com (Cleaner)</li>";
+    echo "<li><b>Customers (Pass: password123):</b> a@example.com, b@example.com</li>";
+    echo "<li><b>Services:</b> Hotel Gym, Spa Treatment</li>";
+    echo "<li><b>Active Bookings:</b> Customer A (Deluxe Suite, March 20-25)</li>";
+    echo "</ul>";
+} else {
+    echo "Error inserting blocker booking: " . $conn->error;
 }
 
 $conn->close();
-echo "<br><strong style='color: green; font-size: 16px;'>✓ Sample data insertion complete!</strong>";
 ?>

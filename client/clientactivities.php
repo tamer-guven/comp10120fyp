@@ -4,7 +4,7 @@ require_once '../database/db.php';
 
 // Redirect to login if not logged in
 if (!isset($_SESSION['user_id'])) {
-    header("Location: clientlogin.php");
+    header("Location: ../login.php");
     exit();
 }
 
@@ -112,7 +112,7 @@ $activities = $conn->query("SELECT * FROM services WHERE is_available = 1 ORDER 
         }
 
         function handleLogout() {
-            goToPage('clientlogin.html');
+            goToPage('../login.php');
         }
 
         // 1. Show the central modal with animation
