@@ -71,6 +71,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // Add room type
+    if ($action === 'add_room_type') {
+        $type = trim($_POST['type'] ?? '');
+        $base_price = $_POST['base_price'] ?? null;
+        $max_guests = $_POST['max_guests'] ?? null;
+
+        if ($type && is_numeric($base_price) && is_numeric($max_guests) && (int)$max_guests > 0) {
+            $stmt = $conn->prepare("INSERT INTO room_types (type, base_price, max_guests) VALUES (?, ?, ?)");
+            $stmt->bind_param('sdi', $type, $base_price, $max_guests);
+            if ($stmt->execute()) {
+                $flash = 'Room type added.';
+            } else {
+                $flash = 'Error adding room type: ' . $conn->error;
+            }
+            $stmt->close();
+        } else {
+            $flash = 'Please provide type, price, and max guests (>0).';
+        }
+    }
+
     // Delete room
     if ($action === 'delete_room') {
         $room_id = (int)($_POST['room_id'] ?? 0);

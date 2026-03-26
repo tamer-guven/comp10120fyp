@@ -407,7 +407,7 @@ $services = $services_result->fetch_all(MYSQLI_ASSOC);
             formData.append('customer_id', customerId);
             formData.append('service_id', serviceId);
 
-            fetch('../includes/staff_book_activity.php', {
+            fetch('../includes/admin_book_activity.php', {
                 method: 'POST',
                 body: formData
             })
